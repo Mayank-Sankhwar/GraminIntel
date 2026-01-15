@@ -3,12 +3,16 @@ import z from "zod";
 export const signup=z.object({
     username:z.string(),
     email:z.string(),
-    code:z.number().lte(6)
+    code:z.number(),
+    phone_number:z.string(),
+    disability_is:z.boolean(),
+    disability_type:z.enum(["visually impared", "hearing impaired", "other"]),
+    answer_preference:z.enum(["voice", "chat"])
 })
 
 export const signin=z.object({
-    email:z.string(),
-    code:z.number().lte(6)
+    phone_number:z.string(),
+    code:z.number()
 })
 
 export interface content {

@@ -105,7 +105,7 @@ app.post('/bhoomi-followup', async (req, res) => {
                 <Say voice="Polly.Aditi" language="en-IN">Is there anything else I can help you with today?</Say>
                 <Gather 
                     input="speech" 
-                    action="/bhoomi-followup" 
+                    action="https://constructed-wrote-functions-telecom.trycloudflare.com/bhoomi-followup" 
                     method="POST" 
                     speechTimeout="auto" 
                     language="en-IN">
@@ -124,15 +124,19 @@ app.post('/bhoomi-followup', async (req, res) => {
 app.post('/signup',async (req:Request,res:Response)=>{
     console.log(req.body)
     try {
-        const data=signup.safeParse(req.body.data)
+        const data=signup.safeParse(req.body)
         if(!data.success){
             return res.status(400).json({"message":"data is missing"})
         }
 
-        const createuser=await UserModel.create({
-            username:data.data?.username,
-            email:data.data?.email,
-            code:data.data?.code
+        const createuser = await UserModel.create({
+            username: data.data?.username,
+            email: data.data?.email,
+            code: data.data?.code,
+            phone_number: data.data?.phone_number,
+            disability_is: data.data?.disability_is,
+            disability_type: data.data?.disability_type,
+            answer_preference: data.data?.answer_preference
         })
 
         res.status(200).json({"message":"user created successfully"})
@@ -147,13 +151,13 @@ app.post('/signup',async (req:Request,res:Response)=>{
 app.post('/signin', async (req: Request, res: Response) => {
     console.log(req.body);
     try {
-        const data = signin.safeParse(req.body.data);
+        const data = signin.safeParse(req.body);
         if (!data.success) {
             return res.status(400).json({ "message": "Invalid or missing data" });
         }
 
         const user = await UserModel.findOne({
-            email: data.data.email,
+            phone_number: data.data.phone_number,
         });
 
         if (!user) {
@@ -176,6 +180,22 @@ app.post('/signin', async (req: Request, res: Response) => {
 
 app.get("/",(req,res)=>{
     res.send("healthy")
+})
+
+app.post('/',async (req,res)=>{
+    try {
+        const {query,phone_number}=req.body
+        if(!query){
+            return res.status(404).json({"message":"no query found"})
+        }
+
+        // @ts-ignore
+        await network.run({query,phone_number});
+        return res.status(200).json({"message":"network run successfully"})
+    } catch (error) {
+        console.log("Error in /",error)
+        return res.status(500).json({"message":"server error has occured"}) 
+    }
 })
 
 app.listen(3000,()=> console.log("express running on 3000"))

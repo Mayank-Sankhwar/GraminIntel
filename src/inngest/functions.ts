@@ -19,7 +19,7 @@ function sanitizeSmsBody(sms: string): string {
   return sms
   .replace(/[*\u2022]/g, '-') // Replace bullets (*) or dots (•) with simple dashes
   .replace(/\n\s*\n/g, '\n')  // Remove double newlines to save space
-  // .substring(0, 134)
+  .substring(0, 134)
   .trim();
 }
 
@@ -50,20 +50,47 @@ const webSearchAndScrapeTool = createTool({
   }),
   handler: async ({ query }, { network, agent, step }) => {
     try {
+      if (!step) return;
       console.log('Web search tool called with query:', query);
       
-      // Prevent multiple executions per network run
+      const englishQuery = await step.run("translate-query", async () => {
+        console.log("translating query",query)
+        const translation = await step.ai.infer("translate-query",{
+          model: step.ai.models.gemini({model:"gemini-2.5-flash",apiKey:process.env.gemini_api}),
+          body: {
+            contents: [{  
+              role: "user",
+              parts: [{text: `
+              Translate the following farmer query to clear, searchable English. 
+              If it's already in English, return it as is.
+              Query: "${query}"
+              `}]
+            }]
+          }
+        });
+        console.log("translation",translation)
+        return translation.candidates?.[0]?.content?.parts?.[0]?.parts?.[0]?.text?.trim() || query;
+      });
+      if (!englishQuery) {
+        return {
+          query: englishQuery,
+          success: false,
+          message: "Failed to translate query to English",
+          content: []
+        };
+      }
+      
       if (network.state.kv.get("webSearchDone")) {
         console.log('Web search already performed, skipping for query:', query);
         return {
-          query,
+          query: englishQuery,
           success: false,
           message: "Web search already performed in this session",
           content: []
         };
       }
       
-      const searchResults = await getWebsites(query);
+      const searchResults = await getWebsites(englishQuery);
       
       if (!searchResults.websites || searchResults.websites.length === 0) {
         const result = {
@@ -76,7 +103,7 @@ const webSearchAndScrapeTool = createTool({
         return result;
       }
 
-      const scrapedContent = await scrapWebsite(searchResults.toBeScrape, query);
+      const scrapedContent = await scrapWebsite(searchResults.toBeScrape, englishQuery);
       
       const formattedContent = scrapedContent.scraped.map(item => ({
         url: item.url,
@@ -150,7 +177,7 @@ const callcustomer = createTool({
             <Say voice="Polly.Aditi" language="en-IN">Is there anything else I can help you with today?</Say>
             <Gather 
                 input="speech" 
-                action="https://juice-civic-pot-administrators.trycloudflare.com/bhoomi-followup" 
+                action="https://constructed-wrote-functions-telecom.trycloudflare.com/bhoomi-followup" 
                 method="POST" 
                 speechTimeout="auto" 
                 language="en-IN">
@@ -331,7 +358,12 @@ export const network = createNetwork({
   name: "farmer-network",
   agents: [farmerAgent],
   maxIter: 3,
-  router: ({ network }) => {
+  router: ({ network,input }) => {
+    // @ts-ignore
+    const { query, phone_number } = input 
+
+    console.log("Query:", query);
+    console.log("Phone:", phone_number);
     const iscompleted = network.state.kv.get("completed");
 
     if (!iscompleted) {
@@ -365,33 +397,33 @@ export async function getBhoomiAdvice(userQuery: string): Promise<string> {
         }
 
         const systemPrompt = `### ROLE
-        You are "Bhoomi," a practical and expert Digital Agronomist helping farmers.
+    You are "Bhoomi," a practical and expert Digital Agronomist helping farmers.
 
-        ### LANGUAGE
-        CRITICAL: You must detect and respond ONLY in ${userLanguage}. 
+    ### LANGUAGE
+    CRITICAL: You must detect and respond ONLY in ${userLanguage}. 
 
-        ### RESEARCH PROTOCOL (MANDATORY)
-        When a farmer asks about government subsidies, market prices, or complex pest issues:
-        1. **Search:** Use 'search_government_schemes' to find the latest official information.
-        2. **Scrape:** Use 'fetch_government_page' on the most relevant URL from your search to get specific details (eligibility, dates, documents).
-        3. **Synthesize:** Combine this live data into a simple, 40-word spoken response in ${userLanguage}.
+    ### RESEARCH PROTOCOL (MANDATORY)
+    When a farmer asks about government subsidies, market prices, or complex pest issues:
+    1. **Search:** Use 'search_government_schemes' to find the latest official information.
+    2. **Scrape:** Use 'fetch_government_page' on the most relevant URL from your search to get specific details (eligibility, dates, documents).
+    3. **Synthesize:** Combine this live data into a simple, 40-word spoken response in ${userLanguage}.
 
-        ### CRITICAL INSTRUCTION
-        ONLY AFTER completing your research and generating your response, you MUST call the 'callcustomer' tool with your answer. You are forbidden from answering without tool use for specific data queries.
+    ### CRITICAL INSTRUCTION
+    ONLY AFTER completing your research and generating your response, you MUST call the 'callcustomer' tool with your answer. You are forbidden from answering without tool use for specific data queries.
 
-        ### CONSTRAINTS
-        - **Tone:** Empathetic and grounded.
-        - **Brevity:** Maximum 40 words.
-        - **Output:** Plain text only. No markdown, bolding, or XML.
-        - **Actionable:** Always provide one clear next step (e.g., "Visit the local block office with your Aadhaar card").
+    ### CONSTRAINTS
+    - **Tone:** Empathetic and grounded.
+    - **Brevity:** Maximum 40 words.
+    - **Output:** Plain text only. No markdown, bolding, or XML.
+    - **Actionable:** Always provide one clear next step (e.g., "Visit the local block office with your Aadhaar card").
 
-        ### EXAMPLE (${userLanguage})
-        User: "Is there a subsidy for tractors?"
-        [Agent Thought: Needs live data]
-        [Tool Call: search_government_schemes("tractor subsidy 2026")]
-        [Tool Call: fetch_government_page("official-link.gov.in")]
-        Response (Hindi): "हाँ, ट्रैक्टर पर 50% सब्सिडी उपलब्ध है। इसके लिए आपके पास 2 एकड़ जमीन होनी चाहिए। अपने पास के कृषि केंद्र में आधार कार्ड के साथ आवेदन करें।"
-        [Final Tool Call: callcustomer]`;
+    ### EXAMPLE (${userLanguage})
+    User: "Is there a subsidy for tractors?"
+    [Agent Thought: Needs live data]
+    [Tool Call: search_government_schemes("tractor subsidy 2026")]
+    [Tool Call: fetch_government_page("official-link.gov.in")]
+    Response (Hindi): "हाँ, ट्रैक्टर पर 50% सब्सिडी उपलब्ध है। इसके लिए आपके पास 2 एकड़ जमीन होनी चाहिए। अपने पास के कृषि केंद्र में आधार कार्ड के साथ आवेदन करें।"
+    [Final Tool Call: callcustomer]`;
 
         return systemPrompt;
       },
@@ -434,9 +466,6 @@ export async function getBhoomiAdvice(userQuery: string): Promise<string> {
       state: followupState,
     });
     console.log("Network run completed");
-
-    // Wait a bit to ensure the tool handler has completed
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Get answer from the networkRun state (the actual running instance)
     const answer = networkRun.state.kv.get("lastAnswer") as string;
