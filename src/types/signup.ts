@@ -6,7 +6,7 @@ export const signup=z.object({
     code:z.number(),
     phone_number:z.string(),
     disability_is:z.boolean(),
-    disability_type:z.enum(["visually impared", "hearing impaired", "other"]),
+    disability_type:z.enum(["Visual Impairment", "Hearing Impairment","Speech Disability" ,"other"]),
     answer_preference:z.enum(["voice", "chat"])
 })
 

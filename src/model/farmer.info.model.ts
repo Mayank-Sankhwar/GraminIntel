@@ -1,32 +1,38 @@
-import { Schema, model, Document } from 'mongoose';
+import mongoose, { Schema, Document } from "mongoose";
 
-export interface IFarmerInfo extends Document {
-    location: string;
-    soilType: string;
-    landSize: number;
-    createdAt?: Date;
-    updatedAt?: Date;
+export interface IFarmerProfile extends Document {
+  userId: string;          // farmer identifier (phone / user id)
+  location?: string;
+  soilType?: string;
+  landSize?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-const farmerInfoSchema = new Schema<IFarmerInfo>(
-    {
-        location: {
-            type: String,
-            required: true,
-        },
-        soilType: {
-            type: String,
-            required: true,
-        },
-        landSize: {
-            type: Number,
-            required: true,
-        },
+const FarmerProfileSchema = new Schema<IFarmerProfile>(
+  {
+    userId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
     },
-    {
-        timestamps: true,
-    }
+
+    location: {
+      type: String,
+    },
+
+    soilType: {
+      type: String,
+    },
+
+    landSize: {
+      type: Number,
+    },
+  },
+  { timestamps: true }
 );
 
-export const FarmerInfo = model<IFarmerInfo>('FarmerInfo', farmerInfoSchema);
-
+export const FarmerProfile =
+  mongoose.models.FarmerProfile ||
+  mongoose.model<IFarmerProfile>("FarmerProfile", FarmerProfileSchema);

@@ -7,7 +7,7 @@ interface IUser extends Document {
     language_preference?: string;
     phone_number: string;
     disability_is:boolean
-    disability_type: "visually impared" | "hearing impaired" | "other"
+    disability_type: "Visual Impairment" | "Hearing Impairment" | "Speech Disability" | "Other"
     answer_preference: "voice" | "chat"
 }
 
@@ -18,7 +18,7 @@ const UserSchema: Schema<IUser> = new Schema({
     language_preference: { type: String, default: "hi" },
     phone_number: { type: String, required: true },
     disability_is: { type: Boolean, required: true },
-    disability_type: { type: String, enum: ["visually impared", "hearing impaired", "other"], required: true },
+    disability_type: { type: String, enum: ["Visual Impairment", "Hearing Impairment", "Speech Disability", "Other"], required: true },
     answer_preference: { type: String, enum: ["voice", "chat"], required: true },
 });
 

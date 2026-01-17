@@ -14,6 +14,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@inngest/agent-kit": "^0.13.2",
     "@langchain/cohere": "^1.0.1",
     "@langchain/core": "^1.1.13",
@@ -22,6 +23,7 @@
     "@twilio/voice-sdk": "^2.18.0",
     "@types/express": "^5.0.6",
     "bottleneck": "^2.19.5",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "eld": "^2.0.2",
     "express": "^5.2.1",
@@ -32,5 +34,8 @@
     "tsx": "^4.21.0",
     "twilio": "^5.11.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19"
   }
 }
