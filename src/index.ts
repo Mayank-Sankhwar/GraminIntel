@@ -1,6 +1,5 @@
 import express, { Request, Response } from "express";
 import { network, getBhoomiAdvice, farmerWorkflow, sendSMS, fastDetect } from "./inngest/functions";
-import { createServer } from '@inngest/agent-kit/server';
 import { serve } from 'inngest/express';
 import { inngest } from './inngest/client';
 import { configDotenv } from "dotenv";
