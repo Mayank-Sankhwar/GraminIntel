@@ -31,6 +31,7 @@ const conversationSessions = new Map<string, ConversationSession>();
 
 app.post('/bhoomi-followup', async (req, res) => {
     try {
+        console.log("Received /bhoomi-followup request:", req.body);
         const callSid = req.body.CallSid || req.body.CallSID || 'default-session';
         const userSpeech = req.body.SpeechResult || req.body.speechResult || req.body.Speech || req.body.speech;
 
@@ -81,16 +82,27 @@ app.post('/bhoomi-followup', async (req, res) => {
             return res.type('text/xml').send('<Response><Say voice="Polly.Aditi" language="en-IN">Goodbye!</Say><Hangup/></Response>');
         }
 
-        if (session.history.length === 0) {
-            const detectedLang = fastDetect(userSpeech);
-            session.language = detectedLang;
-            console.log("Detected language:", detectedLang);
+        if (session.history.length === 0 && userSpeech) {
+            try {
+                const detectedLang = fastDetect(userSpeech);
+                session.language = detectedLang;
+                console.log("Detected language:", detectedLang);
+            } catch (langError) {
+                console.error("Error detecting language:", langError);
+                session.language = 'English';
+            }
         }
 
         session.history.push({ role: 'user', content: userSpeech });
 
-        const nextAnswer = await getBhoomiAdvice(userSpeech);
-        console.log("nextAnswer-------", nextAnswer);
+        let nextAnswer: string;
+        try {
+            nextAnswer = await getBhoomiAdvice(userSpeech, session.language);
+            console.log("nextAnswer-------", nextAnswer);
+        } catch (error) {
+            console.error("Error getting Bhoomi advice:", error);
+            nextAnswer = "माफ़ कीजिए, मैं अभी इस सवाल का जवाब नहीं दे पा रहा हूँ। कृपया दोबारा पूछें।";
+        }
 
         session.history.push({ role: 'assistant', content: nextAnswer });
 
@@ -119,6 +131,8 @@ app.post('/bhoomi-followup', async (req, res) => {
         res.send(recursiveTwiml);
     } catch (error) {
         console.error('Error in /bhoomi-followup:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Error details:', errorMsg);
         res.type('text/xml').send('<Response><Say voice="Polly.Aditi" language="en-IN">I apologize, but an error occurred. Please try again later.</Say><Hangup/></Response>');
     }
 });
@@ -252,24 +266,33 @@ app.post("/twilio/ended", async (req: Request, res: Response) => {
             return res.sendStatus(404);
         }
 
-        // Trigger Inngest summary job
-        // await inngest.send({
-        //   name: "call.ended",
-        //   data: { callSid: CallSid }
-        // });
+        // Get conversation history from session if available
+        const session = conversationSessions.get(CallSid);
+        const conversationText = session?.history
+            .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+            .join('\n\n') || '';
+        const langForSMS = session?.language || 'English';
 
-        await inngest.send({
-            name: "send-sms",
-            id: `send-sms`,
-            data: {
-                input: conversationText,
-                lang: langForSMS
-            }
-        });
+        // Trigger Inngest summary job
+        if (conversationText) {
+            await inngest.send({
+                name: "send-sms",
+                id: `send-sms-${CallSid}`,
+                data: {
+                    callSid: CallSid,
+                    input: conversationText,
+                    lang: langForSMS
+                }
+            });
+        }
+
         await Call.findByIdAndUpdate(call._id, {
             status: "in_progress", // still processing summary
             endedAt: new Date()
         });
+
+        // Clean up conversation session
+        conversationSessions.delete(CallSid);
 
         res.sendStatus(200);
     } catch (err) {

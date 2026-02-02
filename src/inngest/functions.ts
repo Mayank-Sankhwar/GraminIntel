@@ -1,4 +1,4 @@
-import {createAgent,createNetwork,createTool,gemini,createState} from "@inngest/agent-kit";
+import { createAgent, createNetwork, createTool, gemini, createState } from "@inngest/agent-kit";
 import z from "zod";
 import { client, createCall, createMessage } from "../utils/make_call";
 import { inngest } from "./client";
@@ -20,10 +20,10 @@ if ("load" in eld && typeof eld.load === "function") {
 
 function sanitizeSmsBody(sms: string): string {
   return sms
-  .replace(/[*\u2022]/g, '-') // Replace bullets (*) or dots (•) with simple dashes
-  .replace(/\n\s*\n/g, '\n')  // Remove double newlines to save space
-  // .substring(0, 134)
-  .trim();
+    .replace(/[*\u2022]/g, '-') // Replace bullets (*) or dots (•) with simple dashes
+    .replace(/\n\s*\n/g, '\n')  // Remove double newlines to save space
+    // .substring(0, 134)
+    .trim();
 }
 
 export interface NetworkState {
@@ -55,15 +55,16 @@ const webSearchAndScrapeTool = createTool({
     try {
       if (!step) return;
       console.log('Web search tool called with query:', query);
-      
+
       const englishQuery = await step.run("translate-query", async () => {
-        console.log("translating query",query)
-        const translation = await step.ai.infer("translate-query",{
-          model: step.ai.models.gemini({model:"gemini-2.5-flash",apiKey:process.env.gemini_api}),
+        console.log("translating query", query)
+        const translation = await step.ai.infer("translate-query", {
+          model: step.ai.models.gemini({ model: "gemini-2.5-flash", apiKey: process.env.gemini_api }),
           body: {
-            contents: [{  
+            contents: [{
               role: "user",
-              parts: [{text: `
+              parts: [{
+                text: `
               Translate the following farmer query to clear, searchable English. 
               If it's already in English, return it as is.
               Query: "${query}"
@@ -71,8 +72,8 @@ const webSearchAndScrapeTool = createTool({
             }]
           }
         });
-        console.log("translation",translation)
-        return translation.candidates?.[0]?.content?.parts?.[0]?.parts?.[0]?.text?.trim() || query;
+        console.log("translation", translation)
+        return (translation.candidates?.[0]?.content?.parts?.[0] as any)?.text?.trim() || query;
       });
       if (!englishQuery) {
         return {
@@ -82,7 +83,7 @@ const webSearchAndScrapeTool = createTool({
           content: []
         };
       }
-      
+
       if (network.state.kv.get("webSearchDone")) {
         console.log('Web search already performed, skipping for query:', query);
         return {
@@ -92,9 +93,9 @@ const webSearchAndScrapeTool = createTool({
           content: []
         };
       }
-      
+
       const searchResults = await getWebsites(englishQuery);
-      
+
       if (!searchResults.websites || searchResults.websites.length === 0) {
         const result = {
           query: searchResults.query,
@@ -107,7 +108,7 @@ const webSearchAndScrapeTool = createTool({
       }
 
       const scrapedContent = await scrapWebsite(searchResults.toBeScrape, englishQuery);
-      
+
       const formattedContent = scrapedContent.scraped.map(item => ({
         url: item.url,
         title: item.url,
@@ -115,22 +116,22 @@ const webSearchAndScrapeTool = createTool({
       }));
 
       inngest.send({
-        name:"website/scrape.Database",
-        data:{
-          content:formattedContent
+        name: "website/scrape.Database",
+        data: {
+          content: formattedContent
         }
       })
 
       const userWebsites = Array.from(searchResults.AlreadyScraped);
-      let AlreadyScraped:content[]=[];
-      if(userWebsites.length>0){
-        AlreadyScraped = await QueryEmbedding(query,userWebsites)
+      let AlreadyScraped: content[] = [];
+      if (userWebsites.length > 0) {
+        AlreadyScraped = await QueryEmbedding(query, userWebsites)
       }
 
       new Promise((resolve) => setTimeout(resolve, 3000));
 
-      const Content=[...formattedContent,...AlreadyScraped]
-      console.log("content gathered---------------------------------",Content)
+      const Content = [...formattedContent, ...AlreadyScraped]
+      console.log("content gathered---------------------------------", Content)
       const result = {
         query: searchResults.query,
         success: true,
@@ -139,10 +140,10 @@ const webSearchAndScrapeTool = createTool({
         content: Content,
         summary: `Found ${searchResults.count} websites, successfully scraped ${scrapedContent.successCount} sites with relevant information about "${query}"`
       };
-      
+
       // Mark as done to prevent further calls
       network.state.kv.set("webSearchDone", true);
-      
+
       return result;
     } catch (error) {
       console.error('Error in webSearchAndScrapeTool:', error);
@@ -187,7 +188,7 @@ const callcustomer = createTool({
     try {
       network.state.kv.set("lastAnswer", answer);
     } catch (error) {
-      console.log("error in setting answer",error)
+      console.log("error in setting answer", error)
     }
 
     const xmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
@@ -204,12 +205,12 @@ const callcustomer = createTool({
             <Say voice="Polly.Aditi" language="en-IN">Thank you for talking with Bhoomi. Goodbye!</Say>
         </Response>`;
 
-        const callSid = await createCall(xmlResponse);
+    const callSid = await createCall(xmlResponse);
 
-        // Save callSid for polling
-        network.state.kv.set("callSid", callSid);
-    
-        return "Phone call initiated";
+    // Save callSid for polling
+    network.state.kv.set("callSid", callSid);
+
+    return "Phone call initiated";
   },
 });
 
@@ -223,7 +224,7 @@ function convertToSearchableText(query: string): string {
 
 export const getWebsites = async (query: string) => {
   try {
-    console.log("query recieved for websearch",query)
+    console.log("query recieved for websearch", query)
     const searchableQuery = convertToSearchableText(query);
     const response = await tvly.search(searchableQuery, {
       maxResults: 5, // Get top 5 results
@@ -249,14 +250,14 @@ export const getWebsites = async (query: string) => {
       results: response.results || [],
       count: websites.length,
       toBeScrape: notPresent,
-      AlreadyScraped:existingSet
+      AlreadyScraped: existingSet
     };
   } catch (error) {
     console.error("Error getting websites:", error);
     return {
       query,
-      toBeScrape:[],
-      AlreadyScraped:[],
+      toBeScrape: [],
+      AlreadyScraped: [],
       websites: [],
       results: [],
       count: 0,
@@ -271,7 +272,7 @@ export const scrapWebsite = async (websites: string[], query: string) => {
       websites.map(async (website: string) => {
         try {
           console.log('Scraping website:', website);
-          const response:TavilyExtractResponse = await tvly.extract([website], { 
+          const response: TavilyExtractResponse = await tvly.extract([website], {
             query: query,
             format: 'text'
           });
@@ -331,42 +332,42 @@ const farmerAgent = createAgent({
     }
 
     const systemPrompt = `### ROLE
-You are "Bhoomi," a practical and expert Digital Agronomist. Your primary function is to act as a Reliable Data Bridge between official government databases and farmers.
+    You are "Bhoomi," a practical and expert Digital Agronomist. Your primary function is to act as a Reliable Data Bridge between official government databases and farmers.
 
-### LANGUAGE
-CRITICAL: You must detect and respond ONLY in ${userLanguage}.
+    ### LANGUAGE
+    CRITICAL: You must detect and respond ONLY in ${userLanguage}.
 
-### MANDATORY RESEARCH & ANTI-HALLUCINATION PROTOCOL
-For any query regarding subsidies, market prices, or technical farming:
+    ### MANDATORY RESEARCH & ANTI-HALLUCINATION PROTOCOL
+    For any query regarding subsidies, market prices, or technical farming:
 
-Tool Priority: You are strictly forbidden from using internal training data for dates, percentages, or eligibility. Use ONLY data returned by search_government_schemes and fetch_government_page.
+    Tool Priority: You are strictly forbidden from using internal training data for dates, percentages, or eligibility. Use ONLY data returned by search_government_schemes and fetch_government_page.
 
-The "Zero-Knowledge" Rule: If tools return no results or conflicting data, you must say: "I could not find the latest verified information for this. Please consult your local block officer to avoid any risk."
+    The "Zero-Knowledge" Rule: If tools return no results or conflicting data, you must say: "I could not find the latest verified information for this. Please consult your local block officer to avoid any risk."
 
-Data Verification: Before responding, verify the specific percentage, document required, and target location (e.g., CSC center).
+    Data Verification: Before responding, verify the specific percentage, document required, and target location (e.g., CSC center).
 
-### EXECUTION FLOW
-Analyze: Identify the specific crop, scheme, or issue.
+    ### EXECUTION FLOW
+    Analyze: Identify the specific crop, scheme, or issue.
 
-Search & Scrape: Execute search_government_schemes followed by fetch_government_page on the top official .gov.in link.
+    Search & Scrape: Execute search_government_schemes followed by fetch_government_page on the top official .gov.in link.
 
-Synthesize: Extract the single most important fact.
+    Synthesize: Extract the single most important fact.
 
-Tool Call: You MUST call the callcustomer tool with your response as the final action.
+    Tool Call: You MUST call the callcustomer tool with your response as the final action.
 
-### CONSTRAINTS
-Tone: Empathetic, grounded, and authoritative.
+    ### CONSTRAINTS
+    Tone: Empathetic, grounded, and authoritative.
 
-Output: PLAIN TEXT ONLY. No markdown, no asterisks (*), no bolding, no XML tags.
+    Output: PLAIN TEXT ONLY. No markdown, no asterisks (*), no bolding, no XML tags.
 
-Brevity: Maximum 40 words.
+    Brevity: Maximum 40 words.
 
-Actionable: Always provide exactly one clear physical next step.
+    Actionable: Always provide exactly one clear physical next step.
 
-No Guarantees: Never say "You will get it." Use "You may be eligible" or "Apply at."
+    No Guarantees: Never say "You will get it." Use "You may be eligible" or "Apply at."
 
-### EXAMPLE (${userLanguage}: Hindi)
-User: "Tractor par kitni subsidy hai?" Agent Thought: Searching 2026 tractor schemes... Tool returns 50% for small farmers via PM-Kisan. Response: "छोटे किसानों को नए ट्रैक्टर पर 50% तक सब्सिडी मिल सकती है। इसके लिए अपनी खतौनी और आधार कार्ड तैयार रखें। आवेदन के लिए तुरंत अपने नजदीकी जन सेवा केंद्र जाएँ।" Final Tool Call: callcustomer(text="छोटे किसानों को नए ट्रैक्टर पर 50% तक सब्सिडी मिल सकती है। इसके लिए अपनी खतौनी और आधार कार्ड तैयार रखें। आवेदन के लिए तुरंत अपने नजदीकी जन सेवा केंद्र जाएँ।")`;
+    ### EXAMPLE (${userLanguage}: Hindi)
+    User: "Tractor par kitni subsidy hai?" Agent Thought: Searching 2026 tractor schemes... Tool returns 50% for small farmers via PM-Kisan. Response: "छोटे किसानों को नए ट्रैक्टर पर 50% तक सब्सिडी मिल सकती है। इसके लिए अपनी खतौनी और आधार कार्ड तैयार रखें। आवेदन के लिए तुरंत अपने नजदीकी जन सेवा केंद्र जाएँ।" Final Tool Call: callcustomer(text="छोटे किसानों को नए ट्रैक्टर पर 50% तक सब्सिडी मिल सकती है। इसके लिए अपनी खतौनी और आधार कार्ड तैयार रखें। आवेदन के लिए तुरंत अपने नजदीकी जन सेवा केंद्र जाएँ।")`;
 
     return systemPrompt;
   },
@@ -376,14 +377,14 @@ User: "Tractor par kitni subsidy hai?" Agent Thought: Searching 2026 tractor sch
   }),
   tools: [callcustomer, webSearchAndScrapeTool],
 });
- 
+
 export const network = createNetwork({
   name: "farmer-network",
   agents: [farmerAgent],
   maxIter: 3,
-  router: ({ network,input }) => {
+  router: ({ network, input }) => {
     // @ts-ignore
-    const { query, phone_number } = input 
+    const { query, phone_number } = input
 
     console.log("Query:", query);
     console.log("Phone:", phone_number);
@@ -490,40 +491,47 @@ export const sendSMS = inngest.createFunction(
 
     if (!input || !lang) return;
 
-    const response = await step.ai.infer("create-sms", {
-      model: step.ai.models.gemini({model:"gemini-2.5-flash",apiKey:process.env.gemini_api}),
-      body:{
-        contents:[{
-          role:"user",
-          parts:[{
-            text: `
-            ### ROLE
-            You are a concise SMS Summarizer for farmers.
+    let Response;
+    try {
+      const response = await step.ai.infer("create-sms", {
+        model: step.ai.models.gemini({ model: "gemini-2.5-flash", apiKey: process.env.gemini_api }),
+        body: {
+          contents: [{
+            role: "user",
+            parts: [{
+              text: `
+                  ### ROLE
+                  You are a concise SMS Summarizer for farmers.
+      
+                  ### TASK
+                  Create a bullet-point summary of the following conversation in ${lang}.
+      
+                  ### RULES (CRITICAL)
+                  1. **Language:** You MUST respond only in ${lang}.
+                  2. **Length:** Keep the total text under 450 characters (approx 3-4 short lines).
+                  3. **No Special Symbols:** DO NOT use bullet points (•), asterisks (*), or bolding (**). 
+                  4. **GSM-Safe:** Use only simple dashes (-) for lists and plain spaces.
+                  5. **No Hallucination:** Only summarize the actual conversation provided.
+      
+                  ### FORMAT
+                  - [Point 1]
+                  - [Point 2]
+                  - [Point 3]
+                  Summary: [One sentence summary]
+      
+                  Conversation:${input}
+                  `
+            }]
+          }],
+        },
+      });
+      Response = response;
+    } catch (error) {
+      console.log("error in generating sms summary", error)
+      return;
+    }
 
-            ### TASK
-            Create a bullet-point summary of the following conversation in ${lang}.
-
-            ### RULES (CRITICAL)
-            1. **Language:** You MUST respond only in ${lang}.
-            2. **Length:** Keep the total text under 450 characters (approx 3-4 short lines).
-            3. **No Special Symbols:** DO NOT use bullet points (•), asterisks (*), or bolding (**). 
-            4. **GSM-Safe:** Use only simple dashes (-) for lists and plain spaces.
-            5. **No Hallucination:** Only summarize the actual conversation provided.
-
-            ### FORMAT
-            - [Point 1]
-            - [Point 2]
-            - [Point 3]
-            Summary: [One sentence summary]
-
-            Conversation:${input}
-            `
-          }]
-        }],
-      },
-    });
-
-    const sms = response.candidates?.[0]?.content?.parts
+    const sms = Response.candidates?.[0]?.content?.parts
       ?.map(p => ("text" in p ? p.text : ""))
       .join("") || "";
 
@@ -538,19 +546,19 @@ export const sendSMS = inngest.createFunction(
         }
       );
     } catch (error) {
-      console.log("error in changing status to completed from in_progress",error)
+      console.log("error in changing status to completed from in_progress", error)
     }
 
     try {
       await createMessage(sanitizeSmsBody(sms));
     } catch (error) {
-      console.log("error in creating message",error)
+      console.log("error in creating message", error)
     }
 
-    const userId = await Call.findOne({callSid:callSid}).select("userId")
+    const userId = await Call.findOne({ callSid: callSid }).select("userId")
     if (!userId) {
-      console.log("userId not found in call summary",userId)
-      return {message:"userId not found in call summary"}
+      console.log("userId not found in call summary", userId)
+      return { message: "userId not found in call summary" }
     }
 
     await inngest.send({
@@ -559,7 +567,7 @@ export const sendSMS = inngest.createFunction(
         summary: sms,
         userId: userId, // phone number or farmer id
       },
-    });    
+    });
 
     await inngest.send({
       name: "network.completed",
@@ -604,7 +612,6 @@ export const markNetworkCompleted = inngest.createFunction(
   { event: "network.completed" },
 
   async ({ event }) => {
-    const network = await inngest.getNetwork(event.data.networkId);
     network.state.kv.set("completed", true);
   }
 );
@@ -626,7 +633,7 @@ export const processEmbeddings = inngest.createFunction(
         })
       );
     });
-    return {"message":"saved successfully"}
+    return { "message": "saved successfully" }
   }
 );
 
@@ -676,7 +683,7 @@ export const extractFarmerProfile = inngest.createFunction(
     });
 
     const text =
-      response.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+      (response.candidates?.[0]?.content?.parts?.[0] as any)?.text ?? "{}";
 
     let parsed: {
       location?: string | null;
