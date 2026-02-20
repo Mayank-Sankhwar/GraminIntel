@@ -772,6 +772,7 @@ export const sendSMS = inngest.createFunction(
         },
       });
       Response = response;
+      console.log("response from generating sms summary", response)
     } catch (error) {
       console.log("error in generating sms summary", error)
       return;
@@ -780,7 +781,7 @@ export const sendSMS = inngest.createFunction(
     const sms = Response.candidates?.[0]?.content?.parts
       ?.map(p => ("text" in p ? p.text : ""))
       .join("") || "";
-
+    console.log("sms from generating sms summary", sms)
 
     try {
       await Call.findOneAndUpdate(
@@ -807,13 +808,13 @@ export const sendSMS = inngest.createFunction(
       return { message: "userId not found in call summary" }
     }
 
-    await inngest.send({
-      name: "call.summary.created",
-      data: {
-        summary: sms,
-        userId: userId, // phone number or farmer id
-      },
-    });
+    // await inngest.send({
+    //   name: "call.summary.created",
+    //   data: {
+    //     summary: sms,
+    //     userId: userId, // phone number or farmer id
+    //   },
+    // });
 
     await inngest.send({
       name: "network.completed",
@@ -958,7 +959,6 @@ export const extractFarmerProfile = inngest.createFunction(
     );
   }
 );
-
 
 // export interface FetchPricesParams {
 //   state: string;           // e.g. "Punjab"

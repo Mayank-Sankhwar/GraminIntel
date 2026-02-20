@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 90 30% 82%;
+    --foreground: 210 10% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 10% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 10% 15%;
+
+    --primary: 155 100% 13%;
+    --primary-foreground: 42 100% 50%;
+
+    --secondary: 90 30% 82%;
+    --secondary-foreground: 210 10% 15%;
+
+    --muted: 90 20% 90%;
+    --muted-foreground: 210 5% 40%;
+
+    --accent: 42 100% 50%;
+    --accent-foreground: 155 100% 13%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 90 15% 75%;
+    --input: 90 15% 75%;
+    --ring: 155 100% 13%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 155 100% 13%;
+    --sidebar-foreground: 90 30% 90%;
+    --sidebar-primary: 42 100% 50%;
+    --sidebar-primary-foreground: 155 100% 13%;
+    --sidebar-accent: 155 80% 18%;
+    --sidebar-accent-foreground: 90 30% 90%;
+    --sidebar-border: 155 60% 20%;
+    --sidebar-ring: 42 100% 50%;
+
+    --loader-bg: 155 100% 13%;
+    --loader-text: 42 100% 50%;
+    --hero-bg: 90 30% 82%;
+  }
+
+  .dark {
+    --background: 210 10% 10%;
+    --foreground: 90 30% 90%;
+    --card: 210 10% 14%;
+    --card-foreground: 90 30% 90%;
+    --popover: 210 10% 14%;
+    --popover-foreground: 90 30% 90%;
+    --primary: 42 100% 50%;
+    --primary-foreground: 155 100% 13%;
+    --secondary: 210 10% 18%;
+    --secondary-foreground: 90 30% 90%;
+    --muted: 210 10% 18%;
+    --muted-foreground: 90 10% 60%;
+    --accent: 155 80% 18%;
+    --accent-foreground: 90 30% 90%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 210 10% 20%;
+    --input: 210 10% 20%;
+    --ring: 42 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: hsl(42 100% 50%); }
+}
+
+@keyframes circuit-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes progress-fill {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+@keyframes fade-out-loader {
+  0% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+@keyframes fade-in-hero {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.typewriter-text {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid hsl(42 100% 50%);
+  animation: typewriter 1.8s steps(12) 0.3s forwards, blink-caret 0.75s step-end infinite;
+  width: 0;
+  display: inline-block;
+}
+
+.circuit-loader {
+  animation: circuit-spin 2s linear infinite;
+}
+
+.progress-bar-fill {
+  animation: progress-fill 2.5s ease-in-out 0.5s forwards;
+}
+
+.loader-exit {
+  animation: fade-out-loader 0.6s ease-in-out forwards;
+}
+
+.hero-enter {
+  animation: fade-in-hero 0.8s ease-out forwards;
+}
+
+.hero-enter-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.hero-enter-delay-2 { animation-delay: 0.3s; opacity: 0; }
+.hero-enter-delay-3 { animation-delay: 0.5s; opacity: 0; }
+.hero-enter-delay-4 { animation-delay: 0.7s; opacity: 0; }
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}

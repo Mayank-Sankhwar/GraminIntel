@@ -7,8 +7,15 @@ import cors from "cors";
 import { signin, signup } from "./types/signup";
 import mongoose from "mongoose";
 import UserModel from "./model/user.model";
+import { FarmerProfile } from "./model/farmer.info.model";
 import { Call } from "./model/Summary.model";
+import axios from "axios";
+import OpenAI from "openai";
 configDotenv()
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
 
 const app = express()
 
@@ -68,6 +75,8 @@ app.post('/bhoomi-followup', async (req, res) => {
 
             console.log("chat length", session.history.length)
             console.log("SMS sent with conversation history");
+
+            sendWhatsAppMessage("918739072402", conversationText);
             await inngest.send({
                 name: "send-sms",
                 data: {
@@ -190,6 +199,107 @@ app.post('/signin', async (req: Request, res: Response) => {
     } catch (error) {
         console.log("Error in signin", error);
         return res.status(500).json({ "message": "Server error has occured" });
+    }
+});
+
+app.get('/getprofile/:userId', async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const user = await UserModel.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ "message": "User not found" });
+        }
+
+        const farmerInfo = await FarmerProfile.findOne({ userId });
+
+        res.status(200).json({ user, farmerInfo });
+    } catch (error) {
+        console.log("Error in getprofile", error);
+        return res.status(500).json({ "message": "Server error has occured" });
+    }
+});
+
+app.post('/farmer-info', async (req: Request, res: Response) => {
+    try {
+        const { userId, location, soilType, landSize } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ "message": "userId is required" });
+        }
+
+        const profile = await FarmerProfile.findOneAndUpdate(
+            { userId },
+            { location, soilType, landSize },
+            { upsert: true, new: true }
+        );
+
+        res.status(200).json({ "message": "Profile updated successfully", profile });
+    } catch (error) {
+        console.log("Error in farmer-info", error);
+        return res.status(500).json({ "message": "Server error has occured" });
+    }
+});
+
+app.get('/weather/:userId', async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const farmerInfo = await FarmerProfile.findOne({ userId });
+        const location = farmerInfo?.location || "Raipur, Chhattisgarh";
+
+        const apiKey = process.env.OPENWEATHER_API_KEY;
+
+        if (!apiKey) {
+            // High-quality mock data when API key is missing
+            return res.status(200).json({
+                type: "Sunny",
+                temp: 32,
+                feels_like: 35,
+                humidity: 45,
+                wind: 12,
+                pressure: 1012,
+                visibility: 10,
+                location,
+                isDemo: true
+            });
+        }
+        console.log("Weather API:", location, farmerInfo);
+        const weatherResponse = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=metric`);
+        const data = weatherResponse.data;
+
+        // Map OpenWeatherMap condition to Dashboard WeatherType
+        let weatherType = "Sunny";
+        const condition = data.weather[0].main;
+        if (condition === "Clouds") weatherType = "Cloudy";
+        if (condition === "Rain" || condition === "Drizzle") weatherType = "Rainy";
+        if (condition === "Thunderstorm") weatherType = "Stormy";
+
+        res.status(200).json({
+            type: weatherType,
+            temp: Math.round(data.main.temp),
+            feels_like: Math.round(data.main.feels_like),
+            humidity: data.main.humidity,
+            wind: Math.round(data.wind.speed * 3.6), // conversion from m/s to km/h
+            pressure: data.main.pressure,
+            visibility: data.visibility / 1000, // meters to km
+            location: data.name,
+            isDemo: false
+        });
+    } catch (error) {
+        console.log("Error in weather fetch", error);
+        // Fallback to mock on API error to keep UI functional
+        return res.status(200).json({
+            type: "Cloudy",
+            temp: 28,
+            feels_like: 30,
+            humidity: 60,
+            wind: 8,
+            pressure: 1010,
+            visibility: 8,
+            location: "Local Area",
+            isDemo: true,
+            error: "API Error"
+        });
     }
 });
 
@@ -320,5 +430,198 @@ app.post("/market-prices", async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Server error occurred" });
     }
 });
+
+//@ts-ignore
+const WEBHOOK_TOKEN = "MyverifyToken" || process.env.WEBHOOK_TOKEN;
+
+app.get('/webhook', (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    if (mode === "subscribe" && token === WEBHOOK_TOKEN) {
+        console.log("✅ Webhook verified");
+        return res.status(200).send(challenge);
+    }
+
+    console.log("❌ Verification failed");
+    res.sendStatus(403);
+})
+
+app.post('/webhook', async (req, res) => {
+    try {
+        const { entry } = req.body;
+        if (!entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+            return res.sendStatus(200); // Not a message or empty
+        }
+
+        const messagePacket = entry[0].changes[0].value.messages[0];
+        const from = messagePacket.from; // Phone number
+        let userText = "";
+        let buttonId = "";
+
+        // Handle different message types
+        if (messagePacket.type === "text") {
+            userText = messagePacket.text?.body;
+        } else if (messagePacket.type === "interactive") {
+            const interactive = messagePacket.interactive;
+            if (interactive.type === "button_reply") {
+                buttonId = interactive.button_reply?.id;
+                userText = interactive.button_reply?.title;
+                console.log(`🔘 Button clicked: ${buttonId} (${userText})`);
+            }
+        }
+
+        if (!userText && !buttonId) return res.sendStatus(200);
+
+        console.log(`📩 Received WhatsApp from ${from}: ${userText}`);
+
+        // Handle "Call Me" button or command
+        const callKeywords = ['call me', 'phone call'];
+        const shouldCall = buttonId === "call_me" || callKeywords.some(k => userText.toLowerCase().includes(k));
+
+        if (shouldCall) {
+            console.log("📞 Triggering call logic for", from);
+            // Fix: Use correct endpoint and payload for calling
+            try {
+                await axios.post('https://teensy-unenterprisingly-laila.ngrok-free.dev', {
+                    userId: "6969faf3cf2f6f7e39bb0b07", // Use the sender's phone number
+                    query: "The user requested a follow-up call via WhatsApp."
+                });
+                await sendWhatsAppMessage(from, "ठीक है! मैं आपको अभी कॉल कर रही हूँ। (Okay! I am calling you now.)");
+            } catch (callError: any) {
+                console.error("❌ Call Trigger Error:", callError.response?.data || callError.message);
+                await sendWhatsAppMessage(from, "माफ़ कीजिए, कॉल शुरू करने में समस्या हुई। कृपया बाद में कोशिश करें।");
+            }
+            return res.status(200).send("Call initiated");
+        }
+
+        // Handle termination
+        const terminationKeywords = ['bye', 'exit', 'stop', 'done', 'tata', 'शुक्रिया', 'नमस्ते'];
+        const shouldTerminate = buttonId === "end_chat" || terminationKeywords.some(k => userText.toLowerCase().includes(k));
+
+        if (shouldTerminate) {
+            await sendWhatsAppMessage(from, "धन्यवाद! अगर आपको फिर से मदद चाहिए तो कभी भी मैसेज करें। शुभ दिन! (Goodbye! Feel free to message anytime.)");
+            conversationSessions.delete(from);
+            return res.status(200).send("Session terminated");
+        }
+
+        // Session management
+        if (!conversationSessions.has(from)) {
+            conversationSessions.set(from, {
+                history: [
+                    { role: 'system' as any, content: "You are Bhoomi, a helpful Digital Agronomist assisting farmers. Keep responses concise, empathetic, and in the language of the user (mainly Hindi/English). Max 50 words." }
+                ],
+                language: 'Mixed'
+            });
+        }
+
+        const session = conversationSessions.get(from)!;
+        session.history.push({ role: 'user', content: userText });
+
+        // Call OpenAI
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o", // Using 4o for better performance/speed
+            messages: session.history,
+            max_tokens: 150
+        });
+
+        const aiResponse = completion.choices[0].message.content || "माफ़ कीजिए, मैं अभी जवाब नहीं दे पा रहा हूँ।";
+
+        session.history.push({ role: 'assistant', content: aiResponse });
+
+        // Send AI reply followed by interactive buttons
+        await sendWhatsAppMessage(from, aiResponse);
+
+        await sendWhatsAppInteractive(from, "आप आगे क्या करना चाहेंगे? (What would you like to do next?)", [
+            { id: "call_me", title: "📞 Call Me" },
+            { id: "end_chat", title: "👋 End Chat" }
+        ]);
+
+        res.status(200).send("webhook processed");
+    } catch (error) {
+        console.error("❌ Webhook Error:", error);
+        res.sendStatus(500);
+    }
+})
+
+//@ts-ignore
+const WHATSAPP_TOKEN = "EAAYRszYGgX8BQ7ZCa6g1ZAsri4hYPNk4WrWvoUnns5ZAwhtSuD27cC7tfXWJUfqCYQ8npu9wUzIiDAgrmhWIXPnqU8QhY8v8DhJgtEJZBLifr66q8263VpMEU2ZC0SLvAZC2LKrPZBf9WwA4ol1ZBms9V5NRKLrjOkNp1eHi62qYwgzr9ZBoEeMFaAwsYwLPZC0BhN6ajzjyolGVZAT3iM5iWBb2kMWESGZAlsZBqt1ZCWUDvTpRMcLJq0NE9cZCELpKm5LIM7fwBDBSvNRlsZCkji1m510Bbc8L" || process.env.WHATSAPP_TOKEN;
+
+export async function sendWhatsAppMessage(to: string, message: string) {
+    try {
+        const response = await axios.post(
+            `https://graph.facebook.com/v22.0/1062153640304536/messages`,
+            {
+                messaging_product: "whatsapp",
+                to: to,
+                type: "text",
+                text: {
+                    body: message
+                }
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        console.log("✅ Message sent:", response.data);
+        return response.data;
+
+    } catch (error) {
+        console.error(
+            "❌ WhatsApp Send Error:",
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+}
+
+export async function sendWhatsAppInteractive(to: string, bodyText: string, buttons: { id: string, title: string }[]) {
+    try {
+        const response = await axios.post(
+            `https://graph.facebook.com/v22.0/1062153640304536/messages`,
+            {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: to,
+                type: "interactive",
+                interactive: {
+                    type: "button",
+                    body: {
+                        text: bodyText
+                    },
+                    action: {
+                        buttons: buttons.map(b => ({
+                            type: "reply",
+                            reply: {
+                                id: b.id,
+                                title: b.title
+                            }
+                        }))
+                    }
+                }
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        console.log("✅ Interactive Message sent:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            "❌ WhatsApp Interactive Error:",
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+}
 
 app.listen(3000, () => console.log("express running on 3000"))
