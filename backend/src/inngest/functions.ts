@@ -1,5 +1,6 @@
-import { createAgent, createNetwork, createTool, gemini, createState } from "@inngest/agent-kit";
+import { createAgent, createNetwork, createTool, createState, openai } from "@inngest/agent-kit";
 import z from "zod";
+import axios from "axios";
 import { client, createCall, createMessage } from "../utils/make_call";
 import { inngest } from "./client";
 import { eld } from "eld";
@@ -13,16 +14,163 @@ import { StoreEmbedding } from "../helper/embedding_helper";
 import { Call } from "../model/Summary.model";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FarmerProfile } from "../model/farmer.info.model";
+import OpenAI from 'openai'
 
 if ("load" in eld && typeof eld.load === "function") {
   await (eld as any).load();
 }
 
+const clients = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// --- Constants & Lookups ---
+
+const statesAndUTs: Map<number, string> = new Map<number, string>([
+  [1, "Andaman and Nicobar"],
+  [2, "Andhra Pradesh"],
+  [3, "Arunachal Pradesh"],
+  [4, "Assam"],
+  [5, "Bihar"],
+  [6, "Chandigarh"],
+  [7, "Chattisgarh"],
+  [8, "Dadra and Nagar Haveli"],
+  [9, "Daman and Diu"],
+  [10, "Goa"],
+  [11, "Gujarat"],
+  [12, "Haryana"],
+  [13, "Himachal Pradesh"],
+  [14, "Jammu and Kashmir"],
+  [15, "Jharkhand"],
+  [16, "Karnataka"],
+  [17, "Kerala"],
+  [18, "Lakshadweep"],
+  [19, "Madhya Pradesh"],
+  [20, "Maharashtra"],
+  [21, "Manipur"],
+  [22, "Meghalaya"],
+  [23, "Mizoram"],
+  [24, "Nagaland"],
+  [25, "NCT of Delhi"],
+  [26, "Odisha"],
+  [27, "Pondicherry"],
+  [28, "Punjab"],
+  [29, "Rajasthan"],
+  [30, "Sikkim"],
+  [31, "Tamil Nadu"],
+  [32, "Telangana"],
+  [33, "Tripura"],
+  [34, "Uttar Pradesh"],
+  [35, "Uttarakhand"],
+  [36, "West Bengal"]
+]);
+
+const commodityMap = new Map<number, string>([
+  [1, "Arhar(Tur/Red Gram)(Whole)"],
+  [2, "Bajra(Pearl Millet/Cumbu)"],
+  [3, "Barley(Jau)"],
+  [4, "Bengal Gram(Gram)(Whole)"],
+  [5, "Black Gram(Urd Beans)(Whole)"],
+  [6, "Copra"],
+  [7, "Cotton"],
+  [8, "Green Gram(Moong)(Whole)"],
+  [9, "Groundnut"],
+  [10, "Jowar(Sorghum)"],
+  [11, "Jute"],
+  [12, "Lentil(Masur)(Whole)"],
+  [13, "Maize"],
+  [14, "Mustard"],
+  [15, "Niger Seed(Ramtil)"],
+  [16, "Onion"],
+  [17, "Paddy(Common)"],
+  [18, "Potato"],
+  [19, "Ragi(Finger Millet)"],
+  [20, "Safflower"],
+  [21, "Sesamum(Sesame,Gingelly,Til)"],
+  [22, "Soyabean"],
+  [23, "Sugarcane"],
+  [24, "Sunflower"],
+  [25, "Sunflower Seed"],
+  [26, "Tomato"],
+  [27, "Toria"],
+  [28, "Wheat"]
+]);
+
+const stateNameToNumber = new Map<string, number>(
+  Array.from(statesAndUTs.entries()).map(([num, name]) => [name.toLowerCase(), num])
+);
+
+function findStateNumber(stateName: string): number | undefined {
+  const lower = stateName.toLowerCase().trim();
+  if (stateNameToNumber.has(lower)) return stateNameToNumber.get(lower);
+  for (const [key, num] of stateNameToNumber) {
+    if (key.includes(lower) || lower.includes(key)) return num;
+  }
+  return undefined;
+}
+
+export async function getMarketPrices(stateName: string, commodityName: string) {
+  const stateNumber = findStateNumber(stateName);
+  if (stateNumber === undefined) {
+    console.error(`State not found: "${stateName}"`);
+    return {
+      success: false,
+      error: `State "${stateName}" not found. Please use a valid Indian state name.`,
+      data: null,
+    };
+  }
+  console.log(`Fetching all market prices for State: ${stateName} (#${stateNumber})`);
+  const MarketURL = `https://api.agmarknet.gov.in/v1/dashboard-data/?dashboard=marketwise_price_arrival&date=2026-02-20&group=[100000]&commodity=[100001]&variety=100021&state=${stateNumber}&district=[100007]&market=[100009]&grades=[4]&limit=100&format=json`;
+
+  try {
+    const resolvedState = statesAndUTs.get(stateNumber)!;
+    const response = await axios.get(MarketURL, {
+      headers: { "Accept": "application/json" },
+      timeout: 10000,
+    });
+    console.log("response", response.data)
+    if (response.data.status !== "success") {
+      return {
+        success: false,
+        state: resolvedState,
+        error: "No data found for this state",
+        data: null
+      };
+    }
+
+    const allRecords = response.data.data.records;
+    const lowerCommodity = commodityName.toLowerCase().trim();
+
+    const filteredData = allRecords.filter((record: any) => {
+      const recordCommodity = (record.cmdt_name || "").toLowerCase();
+      return recordCommodity.includes(lowerCommodity);
+    });
+
+    return {
+      success: true,
+      state: resolvedState,
+      stateNumber,
+      commodityRequested: commodityName,
+      matchCount: filteredData.length,
+      data: filteredData,
+    };
+  } catch (error) {
+    console.error(`Error fetching/filtering market prices:`, error);
+    return {
+      success: false,
+      state: statesAndUTs.get(stateNumber),
+      data: null,
+      error: error instanceof Error ? error.message : "Failed to fetch market data",
+    };
+  }
+}
+
+// --- Tools & Helpers ---
+
 function sanitizeSmsBody(sms: string): string {
   return sms
     .replace(/[*\u2022]/g, '-') // Replace bullets (*) or dots (•) with simple dashes
     .replace(/\n\s*\n/g, '\n')  // Remove double newlines to save space
-    // .substring(0, 134)
     .trim();
 }
 
@@ -197,7 +345,7 @@ const callcustomer = createTool({
             <Say voice="Polly.Aditi" language="en-IN">Is there anything else I can help you with today?</Say>
             <Gather 
                 input="speech" 
-                action="${process.env.URL}/bhoomi-followup"
+                action="https://teensy-unenterprisingly-laila.ngrok-free.dev/bhoomi-followup"
                 method="POST" 
                 speechTimeout="auto" 
                 language="en-IN">
@@ -314,6 +462,66 @@ export const scrapWebsite = async (websites: string[], query: string) => {
   }
 };
 
+const normalize = (text: string = "") =>
+  text.toLowerCase().trim();
+
+function detectCommodity(userQuery: string): string | null {
+  const query = normalize(userQuery);
+
+  for (const [, commodityName] of commodityMap) {
+    if (query.includes(normalize(commodityName))) {
+      return commodityName;
+    }
+  }
+
+  return null; // NEVER DEFAULT
+}
+
+const getMarketPricesTool = createTool({
+  name: "get_market_prices",
+  description: "Get real-time market prices for crops in different states of India.",
+  parameters: z.object({
+    stateName: z.string().describe("The name of the Indian state (e.g., Punjab, Maharashtra). If you know the farmer's location, use it."),
+    commodityName: z.string().describe("The exact name of the crop/commodity (e.g., Mustard, Wheat, Cotton, Rice, Potato). Extract this carefully from the user query."),
+  }),
+  handler: async ({ stateName, commodityName }, { network }) => {
+    try {
+      const stateToUse = stateName || network.state.kv.get("userState");
+      const query = network.state.kv.get("query") || "";
+      const getCommodity = detectCommodity(query);
+
+      console.log("Query from state:", query);
+      console.log("Detected Commodity:", getCommodity, "| LLM extracted:", commodityName);
+
+      const commodityToUse = getCommodity || commodityName;
+
+      if (!stateToUse) {
+        return "I don't know which state to check for. Could you please tell me your state?";
+      }
+
+      console.log(`Fetching prices for ${commodityToUse} in ${stateToUse}`);
+      const result = await getMarketPrices(stateToUse, commodityToUse);
+      if (!result.success) {
+        return `I could not find the market prices for ${commodityToUse} in ${stateToUse}. ${result.error || ""}`;
+      }
+
+      if (result.matchCount === 0) {
+        return `No records found for ${commodityToUse} in ${stateToUse} at this time.`;
+      }
+
+      // Format the results for the agent
+      const prices = result.data.map((r: any) =>
+        `${r.cmdt_name} (Reported: ${r.reported_date}): Price ₹${r.as_on_price}, MSP ₹${r.msp_price}, Trend ${r.trend}.`
+      ).join("\n");
+      console.log(prices)
+      return `Market prices for ${result.commodityRequested} in ${result.state}:\n${prices}`;
+    } catch (error) {
+      console.error("Error in getMarketPricesTool:", error);
+      return "An error occurred while fetching market prices.";
+    }
+  }
+});
+
 const farmerAgent = createAgent({
   name: "Bhoomi: Farmer Assistant",
   description:
@@ -331,73 +539,111 @@ const farmerAgent = createAgent({
       console.warn("Could not get language from network state:", e);
     }
 
-    const systemPrompt = `### ROLE
-    You are "Bhoomi," a practical and expert Digital Agronomist. Your primary function is to act as a Reliable Data Bridge between official government databases and farmers.
+    const systemPrompt =  `
+### ROLE
+You are "Bhoomi," a practical Digital Agronomist acting strictly as a live data bridge between farmers and verified agricultural data sources.
 
-    ### LANGUAGE
-    CRITICAL: You must detect and respond ONLY in ${userLanguage}.
+### CONTEXT
+You remember farmer information.
+${network?.state?.kv?.get("userState")
+  ? `The farmer is located in ${network.state.kv.get("userState")}.`
+  : "If farmer location is unknown and required, ask a short clarification question."}
 
-    ### MANDATORY RESEARCH & ANTI-HALLUCINATION PROTOCOL
-    For any query regarding subsidies, market prices, or technical farming:
+### LANGUAGE (STRICT)
+Respond ONLY in English.
 
-    Tool Priority: You are strictly forbidden from using internal training data for dates, percentages, or eligibility. Use ONLY data returned by search_government_schemes and fetch_government_page.
+### CORE OPERATING RULE (CRITICAL)
+Bhoomi NEVER answers factual questions from internal knowledge.
+All prices, arrivals, schemes, and rates REQUIRE tool usage.
 
-    The "Zero-Knowledge" Rule: If tools return no results or conflicting data, you must say: "I could not find the latest verified information for this. Please consult your local block officer to avoid any risk."
+### COMMODITY RESOLUTION (MANDATORY)
+Extract the exact commodity mentioned by the user.
 
-    Data Verification: Before responding, verify the specific percentage, document required, and target location (e.g., CSC center).
+Rules:
+• NEVER substitute commodities
+• NEVER default to Wheat
+• Use the user's commodity explicitly
 
-    ### EXECUTION FLOW
-    Analyze: Identify the specific crop, scheme, or issue.
+If user asks for Mustard → commodity = "Mustard"
 
-    Search & Scrape: Execute search_government_schemes followed by fetch_government_page on the top official .gov.in link.
+### PRICE QUERY PROTOCOL (ABSOLUTE)
+Any query mentioning price, rate, mandi, market price, or arrival:
 
-    Synthesize: Extract the single most important fact.
+Step 1 → CALL get_market_prices
+Step 2 → WAIT for tool response
+Step 3 → USE returned data
+Step 4 → CALL callcustomer
 
-    Tool Call: You MUST call the callcustomer tool with your response as the final action.
+Skipping tools is INVALID.
 
-    ### CONSTRAINTS
-    Tone: Empathetic, grounded, and authoritative.
+### TOOL EXECUTION LATENCY RULE
+Tool responses may take several seconds.
+You MUST wait.
+Delay is NOT failure.
 
-    Output: PLAIN TEXT ONLY. No markdown, no asterisks (*), no bolding, no XML tags.
+### TOOL RESULT TRUST RULE
+If get_market_prices returns data → treat as verified truth.
 
-    Brevity: Maximum 40 words.
+Do NOT question, reinterpret, or ignore tool output.
 
-    Actionable: Always provide exactly one clear physical next step.
+### FAILURE HANDLING (STRICT)
+Failure allowed ONLY IF:
 
-    No Guarantees: Never say "You will get it." Use "You may be eligible" or "Apply at."
+• Tool execution fails technically
+• OR tool returns empty records
 
-    ### EXAMPLE (${userLanguage}: Hindi)
-    User: "Tractor par kitni subsidy hai?" Agent Thought: Searching 2026 tractor schemes... Tool returns 50% for small farmers via PM-Kisan. Response: "छोटे किसानों को नए ट्रैक्टर पर 50% तक सब्सिडी मिल सकती है। इसके लिए अपनी खतौनी और आधार कार्ड तैयार रखें। आवेदन के लिए तुरंत अपने नजदीकी जन सेवा केंद्र जाएँ।" Final Tool Call: callcustomer(text="छोटे किसानों को नए ट्रैक्टर पर 50% तक सब्सिडी मिल सकती है। इसके लिए अपनी खतौनी और आधार कार्ड तैयार रखें। आवेदन के लिए तुरंत अपने नजदीकी जन सेवा केंद्र जाएँ।")`;
+Correct failure response:
+
+"I could not retrieve current market data. Please check with your local mandi."
+
+### RESPONSE RULES
+After obtaining tool data:
+
+• Provide ONLY the requested price or arrival info
+• No generic advice
+• No explanations
+• Maximum 40 words
+• Plain text only
+
+### TOOL CALL RULE (MANDATORY)
+Every valid response MUST end with exactly one callcustomer call.
+
+### SAFETY RULES
+Never guess numbers.
+Never fabricate prices.
+Never answer without tool execution.
+`;
 
     return systemPrompt;
   },
-  model: gemini({
-    model: "gemini-2.5-flash",
-    apiKey: process.env.gemini_api,
+  model: openai({
+    model: "gpt-4.1",
+    apiKey: process.env.OPENAI_API_KEY,
   }),
-  tools: [callcustomer, webSearchAndScrapeTool],
+  tools: [callcustomer, webSearchAndScrapeTool, getMarketPricesTool],
 });
 
 export const network = createNetwork({
   name: "farmer-network",
   agents: [farmerAgent],
   maxIter: 3,
-  router: ({ network, input }) => {
+  router: ({ network: net, input }) => {
     // @ts-ignore
     const { query, phone_number } = input
 
     console.log("Query:", query);
     console.log("Phone:", phone_number);
-    if (!network.state.kv.get("initialized")) {
-      network.state.kv.set("query", query);
-      network.state.kv.set("phone_number", phone_number);
-      network.state.kv.set("callStarted", false);
-      network.state.kv.set("completed", false);
-      network.state.kv.set("initialized", true);
+    if (!net.state.kv.get("initialized")) {
+      net.state.kv.set("query", query);
+      net.state.kv.set("phone_number", phone_number);
+      net.state.kv.set("callStarted", false);
+      net.state.kv.set("completed", false);
+      net.state.kv.set("initialized", true);
+      net.state.kv.set("userState", "Uttar Pradesh");
     }
 
-    const callStarted = network.state.kv.get("callStarted");
-    const completed = network.state.kv.get("completed");
+    const callStarted = net.state.kv.get("callStarted");
+    const completed = net.state.kv.get("completed");
 
     if (!callStarted) {
       return farmerAgent;
@@ -712,3 +958,20 @@ export const extractFarmerProfile = inngest.createFunction(
     );
   }
 );
+
+
+// export interface FetchPricesParams {
+//   state: string;           // e.g. "Punjab"
+//   commodity: string;       // e.g. "Wheat"
+//   district?: string;       // e.g. "Ludhiana" (optional)
+//   market?: string;         // e.g. "Ludhiana" (optional)
+//   from_date?: string;      // YYYY-MM-DD (optional, defaults to 30 days ago)
+//   to_date?: string;        // YYYY-MM-DD (optional, defaults to today)
+// }
+
+// export interface FetchPricesResult {
+//   success: boolean;
+//   data?: any;
+//   error?: string;
+//   params: FetchPricesParams;
+// }

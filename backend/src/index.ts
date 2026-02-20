@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { network, getBhoomiAdvice, farmerWorkflow, sendSMS, fastDetect } from "./inngest/functions";
+import { network, getBhoomiAdvice, farmerWorkflow, sendSMS, fastDetect, getMarketPrices } from "./inngest/functions";
 import { serve } from 'inngest/express';
 import { inngest } from './inngest/client';
 import { configDotenv } from "dotenv";
@@ -118,7 +118,7 @@ app.post('/bhoomi-followup', async (req, res) => {
                 <Say voice="Polly.Aditi" language="en-IN">Is there anything else I can help you with today?</Say>
                 <Gather 
                     input="speech" 
-                    action="${process.env.URL}/bhoomi-followup"
+                    action="https://teensy-unenterprisingly-laila.ngrok-free.dev/bhoomi-followup"
                     method="POST" 
                     speechTimeout="auto" 
                     language="en-IN">
@@ -219,7 +219,7 @@ app.post('/', async (req: Request, res: Response) => {
         }
 
         // @ts-ignore
-        await network.run({ query });
+        await network.run({ query, phone_number: userId });
         res.status(201).json({
             callId: call._id as string,
             status: call.status as string,
@@ -300,5 +300,25 @@ app.post("/twilio/ended", async (req: Request, res: Response) => {
     }
 });
 
+app.post("/market-prices", async (req: Request, res: Response) => {
+    try {
+        const { stateName, commodityName } = req.body;
+
+        if (!stateName || !commodityName) {
+            return res.status(400).json({ message: "stateName and commodityName are required" });
+        }
+
+        const result = await getMarketPrices(stateName, commodityName);
+
+        if (!result.success) {
+            return res.status(404).json({ message: result.error });
+        }
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("Error in /market-prices:", error);
+        return res.status(500).json({ message: "Server error occurred" });
+    }
+});
 
 app.listen(3000, () => console.log("express running on 3000"))
