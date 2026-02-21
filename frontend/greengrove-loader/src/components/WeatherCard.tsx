@@ -18,6 +18,7 @@ import {
     Sun as SunIcon
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useLanguage } from "../context/LanguageContext";
 
 export type WeatherType = "Sunny" | "Rainy" | "Cloudy" | "Stormy";
 
@@ -85,8 +86,12 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
     isZoomed,
     transition
 }) => {
+    const { t } = useLanguage();
     const config = weatherConfigs[type] || weatherConfigs.Sunny;
     const Icon = config.icon;
+
+    // Localize config labels dynamically
+    const localizedLabel = t(`weather.${type.toLowerCase()}`);
 
     return (
         <motion.div
@@ -113,14 +118,14 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
                     <div className="flex items-center gap-2">
                         <Droplets className="w-5 h-5 text-accent" />
                         <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Humidity</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("weather.humidity")}</p>
                             <p className="text-sm font-semibold text-foreground">{humidity}%</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Wind className="w-5 h-5 text-accent" />
                         <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Wind</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("weather.wind")}</p>
                             <p className="text-sm font-semibold text-foreground">{windSpeed} km/h</p>
                         </div>
                     </div>
@@ -138,7 +143,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
                         <div>
                             <div className="flex items-center gap-2 mb-4">
                                 <Calendar className="w-5 h-5 text-accent" />
-                                <h4 className="font-bold text-foreground">7-Day Forecast</h4>
+                                <h4 className="font-bold text-foreground">{t("weather.forecast")}</h4>
                             </div>
                             <div className="grid grid-cols-4 sm:grid-cols-7 gap-3">
                                 {[
@@ -166,7 +171,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
                                     <Thermometer size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Feels Like</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">{t("weather.feelsLike")}</p>
                                     <p className="text-base font-bold text-foreground">{feelsLike || temperature + 2}°C</p>
                                 </div>
                             </div>
@@ -175,7 +180,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
                                     <Eye size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Visibility</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">{t("weather.visibility")}</p>
                                     <p className="text-base font-bold text-foreground">{visibility || 14} km</p>
                                 </div>
                             </div>
@@ -184,7 +189,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
                                     <Gauge size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Pressure</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">{t("weather.pressure")}</p>
                                     <p className="text-base font-bold text-foreground">{pressure || 1012} hPa</p>
                                 </div>
                             </div>
@@ -200,7 +205,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
                                     <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent">
                                         <Lightbulb size={18} />
                                     </div>
-                                    <h4 className="font-bold text-foreground">Agricultural Insight</h4>
+                                    <h4 className="font-bold text-foreground">{t("weather.insight")}</h4>
                                 </div>
                                 <p className="text-sm text-foreground/80 leading-relaxed max-w-lg">
                                     Based on the 7-day forecast, we recommend performing irrigation <span className="text-accent font-bold">Tomorrow morning (6:00 AM)</span> before the temperatures peak. High humidity on Wednesday indicates a potential risk for fungal growth in Section B.
@@ -212,9 +217,9 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
 
                 {!isZoomed && (
                     <div className="pt-4 border-t border-border/50 flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground/80">{config.label}</span>
+                        <span className="text-sm font-medium text-foreground/80">{localizedLabel}</span>
                         <Button variant="ghost" size="sm" className="h-8 text-accent hover:text-accent hover:bg-accent/10 p-0">
-                            Details <ArrowRight className="w-4 h-4 ml-1" />
+                            {t("weather.details")} <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                     </div>
                 )}

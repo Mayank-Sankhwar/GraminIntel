@@ -13,6 +13,7 @@ import {
     Calendar
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useLanguage } from "../context/LanguageContext";
 
 interface MarketPriceCardProps {
     commodity: string;
@@ -63,7 +64,33 @@ const MarketPriceCard: React.FC<MarketPriceCardProps> = ({
     isZoomed,
     transition
 }) => {
-    const config = trendConfigs[trend];
+    const { t, language } = useLanguage();
+
+    const localizedTrendConfigs = {
+        up: {
+            bgGradient: "from-emerald-400/20 via-emerald-500/10 to-transparent",
+            icon: ArrowUpRight,
+            iconColor: "text-emerald-500",
+            trendColor: "text-emerald-500",
+            label: t("market.rising")
+        },
+        down: {
+            bgGradient: "from-rose-500/20 via-rose-600/10 to-transparent",
+            icon: ArrowDownRight,
+            iconColor: "text-rose-500",
+            trendColor: "text-rose-500",
+            label: t("market.falling")
+        },
+        stable: {
+            bgGradient: "from-blue-400/20 via-indigo-500/10 to-transparent",
+            icon: TrendingUp,
+            iconColor: "text-blue-500",
+            trendColor: "text-blue-500",
+            label: t("market.stable")
+        }
+    };
+
+    const config = localizedTrendConfigs[trend];
     const TrendIcon = config.icon;
 
     return (
@@ -79,7 +106,7 @@ const MarketPriceCard: React.FC<MarketPriceCardProps> = ({
             <div className="relative p-6">
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Mandi Bhav</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{t("market.bhav")}</p>
                         <h3 className={`${isZoomed ? 'text-5xl' : 'text-2xl'} font-bold text-foreground transition-all duration-500`}>{commodity}</h3>
                     </div>
                     <div className={`${config.iconColor} bg-white/10 p-2 rounded-lg`}>
@@ -107,19 +134,19 @@ const MarketPriceCard: React.FC<MarketPriceCardProps> = ({
                             <div className="bg-white/5 rounded-2xl p-6 border border-border/40 space-y-4">
                                 <div className="flex items-center gap-2">
                                     <History className="w-5 h-5 text-accent" />
-                                    <h4 className="font-bold text-foreground">Recent Highlights</h4>
+                                    <h4 className="font-bold text-foreground">{t("market.highlights")}</h4>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Highest (30d)</span>
+                                        <span className="text-muted-foreground">{t("market.highest")}</span>
                                         <span className="font-bold text-foreground">₹5,750</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Lowest (30d)</span>
+                                        <span className="text-muted-foreground">{t("market.lowest")}</span>
                                         <span className="font-bold text-foreground">₹4,900</span>
                                     </div>
                                     <div className="flex justify-between text-sm border-t border-white/5 pt-3">
-                                        <span className="text-muted-foreground">Volume Change</span>
+                                        <span className="text-muted-foreground">{t("market.volumeChange")}</span>
                                         <span className="font-bold text-emerald-500">+14%</span>
                                     </div>
                                 </div>
@@ -128,7 +155,7 @@ const MarketPriceCard: React.FC<MarketPriceCardProps> = ({
                             <div className="bg-accent/5 rounded-2xl p-6 border border-accent/20 space-y-4">
                                 <div className="flex items-center gap-2">
                                     <Activity className="w-5 h-5 text-accent" />
-                                    <h4 className="font-bold text-foreground">AI Market Sentiment</h4>
+                                    <h4 className="font-bold text-foreground">{t("market.sentiment")}</h4>
                                 </div>
                                 <p className="text-sm text-foreground/80 leading-relaxed italic">
                                     "Bullish sentiment persists as arrivals remain steady but demand hits record highs for processing units."
@@ -143,7 +170,7 @@ const MarketPriceCard: React.FC<MarketPriceCardProps> = ({
                         <div className="bg-secondary/10 rounded-2xl p-6 border border-border/30">
                             <div className="flex items-center gap-2 mb-6">
                                 <Calendar className="w-5 h-5 text-accent" />
-                                <h4 className="font-bold text-foreground">Predicted Next 15 Days</h4>
+                                <h4 className="font-bold text-foreground">{t("market.predicted")}</h4>
                             </div>
                             <div className="flex items-end h-24 gap-3 bg-white/5 rounded-xl p-4">
                                 {[30, 45, 40, 60, 55, 75, 70, 85].map((h, i) => (
@@ -161,7 +188,7 @@ const MarketPriceCard: React.FC<MarketPriceCardProps> = ({
                             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{config.label}</span>
                         </div>
                         <Button variant="ghost" size="sm" className="h-8 text-accent hover:text-accent hover:bg-accent/10 p-0">
-                            Market Insight <ChevronRight className="w-4 h-4 ml-1" />
+                            {t("market.insight")} <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     </div>
                 )}

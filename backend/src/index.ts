@@ -29,7 +29,7 @@ app.use("/api/inngest", serve({
 }));
 
 interface ConversationSession {
-    history: Array<{ role: 'user' | 'assistant'; content: string }>;
+    history: Array<any>; // Changed to any to support multimodal content parts
     language: string;
 }
 
@@ -472,7 +472,7 @@ app.post('/webhook', async (req, res) => {
             }
         }
 
-        if (!userText && !buttonId) return res.sendStatus(200);
+        if (!userText && !buttonId && messagePacket.type !== "image") return res.sendStatus(200);
 
         console.log(`📩 Received WhatsApp from ${from}: ${userText}`);
 
@@ -486,7 +486,7 @@ app.post('/webhook', async (req, res) => {
             try {
                 await axios.post('https://teensy-unenterprisingly-laila.ngrok-free.dev', {
                     userId: "6969faf3cf2f6f7e39bb0b07", // Use the sender's phone number
-                    query: "The user requested a follow-up call via WhatsApp."
+                    query: "hello"
                 });
                 await sendWhatsAppMessage(from, "ठीक है! मैं आपको अभी कॉल कर रही हूँ। (Okay! I am calling you now.)");
             } catch (callError: any) {
@@ -510,20 +510,45 @@ app.post('/webhook', async (req, res) => {
         if (!conversationSessions.has(from)) {
             conversationSessions.set(from, {
                 history: [
-                    { role: 'system' as any, content: "You are Bhoomi, a helpful Digital Agronomist assisting farmers. Keep responses concise, empathetic, and in the language of the user (mainly Hindi/English). Max 50 words." }
+                    { role: 'system' as any, content: "You are Bhoomi, a helpful Digital Agronomist assisting farmers. You can analyze images of crops to identify pests, diseases, or deficiencies. Keep responses concise, empathetic, and in the language of the user (mainly Hindi/English). Provide practical organic and chemical solutions. Max 60 words." }
                 ],
                 language: 'Mixed'
             });
         }
 
         const session = conversationSessions.get(from)!;
-        session.history.push({ role: 'user', content: userText });
 
-        // Call OpenAI
+        let messageContent: any = userText;
+        console.log("Received message:", messagePacket);
+        // Handle images
+        if (messagePacket.type === "image") {
+            const mediaId = messagePacket.image?.id;
+            const caption = messagePacket.image?.caption || "";
+            console.log(`🖼️ Received image from ${from}, mediaId: ${mediaId}`);
+
+            try {
+                const base64Image = await downloadWhatsAppMedia(mediaId);
+                messageContent = [
+                    { type: "text", text: caption || "Please analyze this image for any pests, diseases, or crop health issues and suggest solutions." },
+                    { type: "image_url", image_url: { url: base64Image } }
+                ];
+                // If it's just an image with no caption and no previous text, we use a default prompt
+                if (!caption && !userText) {
+                    userText = "Image upload analysis";
+                }
+            } catch (imageError) {
+                console.error("Error processing image:", imageError);
+                await sendWhatsAppMessage(from, "माफ़ कीजिए, मैं आपकी फोटो को प्रोसेस नहीं कर पाया। (Sorry, I couldn't process your photo.)");
+                return res.sendStatus(200);
+            }
+        }
+
+        session.history.push({ role: 'user', content: messageContent });
+
         const completion = await openai.chat.completions.create({
             model: "gpt-4o", // Using 4o for better performance/speed
             messages: session.history,
-            max_tokens: 150
+            max_tokens: 500 // Increased for more detailed analysis
         });
 
         const aiResponse = completion.choices[0].message.content || "माफ़ कीजिए, मैं अभी जवाब नहीं दे पा रहा हूँ।";
@@ -546,7 +571,7 @@ app.post('/webhook', async (req, res) => {
 })
 
 //@ts-ignore
-const WHATSAPP_TOKEN = "EAAYRszYGgX8BQ7ZCa6g1ZAsri4hYPNk4WrWvoUnns5ZAwhtSuD27cC7tfXWJUfqCYQ8npu9wUzIiDAgrmhWIXPnqU8QhY8v8DhJgtEJZBLifr66q8263VpMEU2ZC0SLvAZC2LKrPZBf9WwA4ol1ZBms9V5NRKLrjOkNp1eHi62qYwgzr9ZBoEeMFaAwsYwLPZC0BhN6ajzjyolGVZAT3iM5iWBb2kMWESGZAlsZBqt1ZCWUDvTpRMcLJq0NE9cZCELpKm5LIM7fwBDBSvNRlsZCkji1m510Bbc8L" || process.env.WHATSAPP_TOKEN;
+const WHATSAPP_TOKEN = "EAAYRszYGgX8BQ88yI0ZANGnSIgcL6fTVTX3LLlqkbXaXt0Sb9jbiSX5ruimZBJ2PNGH3r1pRWBIsylAXzPZC9ocgKCQUpKCZAfnRZCq4tb5Xy5FaNtfxpaF6Xe4wdZAEQ4vHLuWylj7jlFnABoAhMn1d7AMBaqiW4V8QrAQowYIDk7CSZBLMxZCCQl6QRVqGB6k0wTcZC4EMPegJq9T4sZBFe0O6l5ZAUyVMSOxm0ZC8081KFUbzNn5nat7ACJGZALpJ2TXYvLIYe9hhVoVXIUiGoDEYCIUk29wZDZD" || process.env.WHATSAPP_TOKEN;
 
 export async function sendWhatsAppMessage(to: string, message: string) {
     try {
@@ -620,6 +645,39 @@ export async function sendWhatsAppInteractive(to: string, bodyText: string, butt
             "❌ WhatsApp Interactive Error:",
             error.response?.data || error.message
         );
+        throw error;
+    }
+}
+
+export async function downloadWhatsAppMedia(mediaId: string): Promise<string> {
+    try {
+        // Step 1: Get the media URL
+        const urlResponse = await axios.get(
+            `https://graph.facebook.com/v22.0/${mediaId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+                },
+            }
+        );
+
+        const downloadUrl = urlResponse.data.url;
+
+        // Step 2: Download the media
+        const mediaResponse = await axios.get(downloadUrl, {
+            headers: {
+                Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+            },
+            responseType: 'arraybuffer',
+        });
+
+        // Convert to base64
+        const base64Image = Buffer.from(mediaResponse.data, 'binary').toString('base64');
+        const mimeType = mediaResponse.headers['content-type'] || 'image/jpeg';
+
+        return `data:${mimeType};base64,${base64Image}`;
+    } catch (error: any) {
+        console.error("❌ WhatsApp Media Download Error:", error.response?.data || error.message);
         throw error;
     }
 }

@@ -16,8 +16,10 @@ import {
     TrendingUp,
     Globe,
     Newspaper,
-    Info
+    Info,
+    ArrowRight
 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 import {
     ChartContainer,
     ChartTooltip,
@@ -82,7 +84,24 @@ const MarketInsightsCard: React.FC<MarketInsightsCardProps> = ({
     isZoomed,
     transition
 }) => {
+    const { t, language } = useLanguage();
     const [activeTab, setActiveTab] = useState("bestSellers");
+
+    // Localize chart config
+    const localizedChartConfig = {
+        mustard: {
+            label: language === "hi" ? "सरसों" : "Mustard",
+            color: "hsl(var(--accent))",
+        },
+        wheat: {
+            label: language === "hi" ? "गेहूं" : "Wheat",
+            color: "hsl(210, 80%, 50%)",
+        },
+        rice: {
+            label: language === "hi" ? "चावल" : "Rice",
+            color: "hsl(150, 80%, 40%)",
+        },
+    } satisfies ChartConfig;
 
     return (
         <motion.div
@@ -94,28 +113,28 @@ const MarketInsightsCard: React.FC<MarketInsightsCardProps> = ({
             <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isZoomed ? 'mb-12' : 'mb-8'}`}>
                 <div>
                     <h3 className={`${isZoomed ? 'text-4xl' : 'text-2xl'} font-black text-foreground tracking-tight flex items-center gap-2 transition-all`}>
-                        Market Analysis <BarChart3 className="text-accent w-6 h-6" />
+                        {t("market.analysis")} <BarChart3 className="text-accent w-6 h-6" />
                     </h3>
-                    <p className="text-sm text-muted-foreground font-medium">Comparison of top commodities</p>
+                    <p className="text-sm text-muted-foreground font-medium">{t("market.subtitle")}</p>
                 </div>
 
                 <Tabs defaultValue="bestSellers" onValueChange={setActiveTab} className="w-full md:w-auto">
                     <TabsList className="bg-secondary/50 p-1 rounded-2xl h-11 border border-border/50">
                         <TabsTrigger value="bestSellers" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm">
-                            Best Sellers
+                            {t("market.bestSellers")}
                         </TabsTrigger>
                         <TabsTrigger value="topIncreasers" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm">
-                            Top Increasers
+                            {t("market.topIncreasers")}
                         </TabsTrigger>
                         <TabsTrigger value="regional" className="rounded-xl px-4 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm">
-                            Regional
+                            {t("market.regional")}
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
 
             <div className={`flex-grow relative ${isZoomed ? 'min-h-[400px]' : 'min-h-[300px]'}`}>
-                <ChartContainer config={chartConfig} className="h-full w-full">
+                <ChartContainer config={localizedChartConfig} className="h-full w-full">
                     <AreaChart
                         data={marketData[activeTab as keyof typeof marketData]}
                         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -187,7 +206,7 @@ const MarketInsightsCard: React.FC<MarketInsightsCardProps> = ({
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <Globe className="w-5 h-5 text-accent" />
-                            <h4 className="font-bold text-foreground">Global Trend Impact</h4>
+                            <h4 className="font-bold text-foreground">{t("market.globe")}</h4>
                         </div>
                         <div className="bg-secondary/10 p-4 rounded-2xl border border-border/40">
                             <p className="text-sm text-foreground/80 leading-relaxed">
@@ -198,7 +217,7 @@ const MarketInsightsCard: React.FC<MarketInsightsCardProps> = ({
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <Newspaper className="w-5 h-5 text-accent" />
-                            <h4 className="font-bold text-foreground">Nearby Mandi Arrivals</h4>
+                            <h4 className="font-bold text-foreground">{t("market.arrivals")}</h4>
                         </div>
                         <div className="space-y-2">
                             {[
@@ -220,24 +239,24 @@ const MarketInsightsCard: React.FC<MarketInsightsCardProps> = ({
 
             <div className={`${isZoomed ? 'mt-8' : 'mt-8'} grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-border/50`}>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Volume</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("market.volume")}</span>
                     <span className="text-sm font-black text-foreground">12.4k Tons</span>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Demand</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("market.demand")}</span>
                     <div className="flex items-center gap-1">
-                        <span className="text-sm font-black text-foreground">High</span>
+                        <span className="text-sm font-black text-foreground">{language === "hi" ? "उच्च" : "High"}</span>
                         <ArrowUpRight size={14} className="text-emerald-500" />
                     </div>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Avg. Return</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("market.return")}</span>
                     <span className="text-sm font-black text-foreground">24.5%</span>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Volatility</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("market.volatility")}</span>
                     <div className="flex items-center gap-1">
-                        <span className="text-sm font-black text-foreground">High</span>
+                        <span className="text-sm font-black text-foreground">{language === "hi" ? "उच्च" : "High"}</span>
                         <Activity size={14} className="text-destructive animate-pulse" />
                     </div>
                 </div>
@@ -247,7 +266,7 @@ const MarketInsightsCard: React.FC<MarketInsightsCardProps> = ({
                 <div className="mt-8 flex justify-end">
                     <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground bg-white/5 px-4 py-2 rounded-full border border-border/50">
                         <Info size={14} />
-                        Next AI analysis in 2h 45m
+                        {t("market.nextAnalysis")} 2h 45m
                     </div>
                 </div>
             )}

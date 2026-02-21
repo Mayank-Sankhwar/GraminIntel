@@ -9,6 +9,7 @@ import {
     Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "../context/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -33,12 +34,13 @@ const OnboardingModal = ({ userId, onComplete }: OnboardingModalProps) => {
     const [soilType, setSoilType] = useState("");
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
+    const { t } = useLanguage();
 
     const handleSubmit = async () => {
         if (!location || !landSize || !soilType) {
             toast({
-                title: "Almost there!",
-                description: "Please fill in all details to get the best seasonal advice.",
+                title: t("onboarding.almostThere"),
+                description: t("onboarding.fillDetails"),
                 variant: "destructive"
             });
             return;
@@ -54,14 +56,14 @@ const OnboardingModal = ({ userId, onComplete }: OnboardingModalProps) => {
             });
 
             toast({
-                title: "Profile Complete!",
-                description: "We've customized your dashboard based on your farm details.",
+                title: t("onboarding.complete"),
+                description: t("onboarding.customized"),
             });
             onComplete();
         } catch (error) {
             toast({
-                title: "Error",
-                description: "Something went wrong. Please try again.",
+                title: t("onboarding.error"),
+                description: t("onboarding.wrong"),
                 variant: "destructive"
             });
         } finally {
@@ -89,18 +91,18 @@ const OnboardingModal = ({ userId, onComplete }: OnboardingModalProps) => {
                 <div className="relative space-y-8">
                     <div className="space-y-2">
                         <div className="inline-flex items-center gap-2 bg-accent/10 text-accent px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-accent/20">
-                            <Sparkles size={12} /> Personalize Your Experience
+                            <Sparkles size={12} /> {t("onboarding.personalize")}
                         </div>
-                        <h2 className="text-3xl font-black text-foreground tracking-tight">Complete Your Farm Profile</h2>
+                        <h2 className="text-3xl font-black text-foreground tracking-tight">{t("onboarding.title")}</h2>
                         <p className="text-muted-foreground text-sm font-medium">
-                            Tell us about your land to receive accurate weather forecasts and crop suggestions.
+                            {t("onboarding.subtitle")}
                         </p>
                     </div>
 
                     <div className="space-y-6">
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                <MapPin size={14} className="text-accent" /> Location (District/State)
+                                <MapPin size={14} className="text-accent" /> {t("onboarding.location")}
                             </Label>
                             <Input
                                 placeholder="e.g. Raipur, Chhattisgarh"
@@ -113,7 +115,7 @@ const OnboardingModal = ({ userId, onComplete }: OnboardingModalProps) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                    <Tractor size={14} className="text-accent" /> Land Size (Acres)
+                                    <Tractor size={14} className="text-accent" /> {t("onboarding.landSize")}
                                 </Label>
                                 <Input
                                     type="number"
@@ -125,18 +127,18 @@ const OnboardingModal = ({ userId, onComplete }: OnboardingModalProps) => {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                    <Layers size={14} className="text-accent" /> Soil Type
+                                    <Layers size={14} className="text-accent" /> {t("onboarding.soilType")}
                                 </Label>
                                 <Select value={soilType} onValueChange={setSoilType}>
                                     <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl text-muted-foreground font-medium">
-                                        <SelectValue placeholder="Select type" />
+                                        <SelectValue placeholder={t("onboarding.selectType")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Alluvial">Alluvial Soil</SelectItem>
-                                        <SelectItem value="Black">Black Soil</SelectItem>
-                                        <SelectItem value="Red">Red Soil</SelectItem>
-                                        <SelectItem value="Laterite">Laterite Soil</SelectItem>
-                                        <SelectItem value="Desert">Desert Soil</SelectItem>
+                                        <SelectItem value="Alluvial">{t("onboarding.alluvial")}</SelectItem>
+                                        <SelectItem value="Black">{t("onboarding.black")}</SelectItem>
+                                        <SelectItem value="Red">{t("onboarding.red")}</SelectItem>
+                                        <SelectItem value="Laterite">{t("onboarding.laterite")}</SelectItem>
+                                        <SelectItem value="Desert">{t("onboarding.desert")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -149,17 +151,17 @@ const OnboardingModal = ({ userId, onComplete }: OnboardingModalProps) => {
                         className="w-full h-14 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-2xl text-lg shadow-xl shadow-accent/20 group"
                     >
                         {loading ? (
-                            <span className="flex items-center gap-2 animate-pulse">Saving Details...</span>
+                            <span className="flex items-center gap-2 animate-pulse">{t("onboarding.saving")}</span>
                         ) : (
                             <span className="flex items-center gap-2">
-                                Finish Setup <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                {t("onboarding.finish")} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                             </span>
                         )}
                     </Button>
 
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-primary/5 p-3 rounded-xl border border-white/5">
                         <Info size={14} className="flex-shrink-0" />
-                        This information helps us calculate precise irrigation and fertilizer requirements for your specific field.
+                        {t("onboarding.info")}
                     </div>
                 </div>
             </motion.div>

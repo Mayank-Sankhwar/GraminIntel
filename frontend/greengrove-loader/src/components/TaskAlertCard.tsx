@@ -13,6 +13,7 @@ import {
     MoreHorizontal
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useLanguage } from "../context/LanguageContext";
 
 interface TaskItem {
     id: string;
@@ -57,9 +58,31 @@ const TaskAlertCard: React.FC<TaskAlertCardProps> = ({
     isZoomed,
     transition
 }) => {
+    const { t, language } = useLanguage();
+
+    const localizedPriorityConfigs = {
+        High: {
+            bgGradient: "from-rose-500/20 via-rose-600/10 to-transparent",
+            icon: AlertTriangle,
+            iconColor: "text-rose-500",
+            label: t("tasks.urgent")
+        },
+        Medium: {
+            bgGradient: "from-amber-400/20 via-orange-500/10 to-transparent",
+            icon: Info,
+            iconColor: "text-amber-500",
+            label: t("tasks.maintenance")
+        },
+        Low: {
+            bgGradient: "from-blue-400/20 via-indigo-500/10 to-transparent",
+            icon: Bell,
+            iconColor: "text-blue-500",
+            label: t("tasks.reminders")
+        }
+    };
     // Determine the overall card theme based on the highest priority task
     const topTask = tasks.find(t => t.priority === "High") || tasks[0];
-    const config = priorityConfigs[topTask?.priority || "Low"];
+    const config = localizedPriorityConfigs[topTask?.priority || "Low"];
 
     return (
         <motion.div
@@ -74,8 +97,8 @@ const TaskAlertCard: React.FC<TaskAlertCardProps> = ({
             <div className={`relative p-6 ${isZoomed ? 'h-full flex flex-col' : ''}`}>
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h3 className={`${isZoomed ? 'text-4xl' : 'text-2xl'} font-bold text-foreground transition-all`}>Pending Tasks</h3>
-                        <p className="text-sm text-muted-foreground font-medium">{tasks.length} items need attention</p>
+                        <h3 className={`${isZoomed ? 'text-4xl' : 'text-2xl'} font-bold text-foreground transition-all`}>{t("tasks.title")}</h3>
+                        <p className="text-sm text-muted-foreground font-medium">{tasks.length} {t("tasks.subtitle")}</p>
                     </div>
                     <div className={`${config.iconColor} bg-white/10 p-2 rounded-lg animate-pulse`}>
                         <Bell size={isZoomed ? 48 : 32} strokeWidth={1.5} />
@@ -93,7 +116,7 @@ const TaskAlertCard: React.FC<TaskAlertCardProps> = ({
                                 <div className="flex items-center gap-1.5 mt-1">
                                     <Clock size={10} className="text-muted-foreground" />
                                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">{task.time}</span>
-                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ml-auto ${priorityConfigs[task.priority].iconColor} bg-white/5`}>{task.priority}</span>
+                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ml-auto ${localizedPriorityConfigs[task.priority].iconColor} bg-white/5`}>{language === "hi" ? (task.priority === "High" ? "उच्च" : task.priority === "Medium" ? "मध्यम" : "कम") : task.priority}</span>
                                 </div>
                             </div>
                             {isZoomed && (
@@ -113,13 +136,13 @@ const TaskAlertCard: React.FC<TaskAlertCardProps> = ({
                     >
                         <div className="bg-accent p-6 rounded-2xl flex items-center justify-between text-accent-foreground shadow-lg shadow-accent/20">
                             <div>
-                                <p className="text-xs font-bold uppercase opacity-80 mb-1">Weekly Completion</p>
+                                <p className="text-xs font-bold uppercase opacity-80 mb-1">{language === "hi" ? "साप्ताहिक पूर्णता" : "Weekly Completion"}</p>
                                 <p className="text-2xl font-black">12/15</p>
                             </div>
                             <CheckSquare size={40} className="opacity-20" />
                         </div>
                         <div className="bg-secondary p-6 rounded-2xl border border-border/50 flex flex-col justify-center">
-                            <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Productivity Score</p>
+                            <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{language === "hi" ? "उत्पादकता स्कोर" : "Productivity Score"}</p>
                             <div className="flex items-center gap-2">
                                 <p className="text-2xl font-black text-foreground">84%</p>
                                 <span className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">+4%</span>
@@ -132,12 +155,12 @@ const TaskAlertCard: React.FC<TaskAlertCardProps> = ({
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{config.label}</span>
                     {!isZoomed ? (
                         <Button variant="ghost" size="sm" className="h-8 text-accent hover:text-accent hover:bg-accent/10 p-0">
-                            View All Tasks <ArrowRight className="w-4 h-4 ml-1" />
+                            {t("tasks.viewAll")} <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                     ) : (
                         <div className="flex gap-2">
-                            <Button size="sm" variant="outline" className="rounded-xl font-bold">Manage Scheduler</Button>
-                            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl font-bold">Mark All Complete</Button>
+                            <Button size="sm" variant="outline" className="rounded-xl font-bold">{language === "hi" ? "शेड्यूलर प्रबंधित करें" : "Manage Scheduler"}</Button>
+                            <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl font-bold">{language === "hi" ? "सभी पूर्ण चिह्नित करें" : "Mark All Complete"}</Button>
                         </div>
                     )}
                 </div>

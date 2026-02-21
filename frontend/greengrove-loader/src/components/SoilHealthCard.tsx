@@ -13,6 +13,7 @@ import {
     Info
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useLanguage } from "../context/LanguageContext";
 
 interface SoilHealthCardProps {
     moisture: number;
@@ -60,7 +61,9 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
     isZoomed,
     transition
 }) => {
+    const { t } = useLanguage();
     const config = conditionConfigs[condition];
+    const localizedLabel = t(`soil.${condition === "Optimal" ? "healthy" : condition === "Suboptimal" ? "needsAttention" : "critical"}`);
 
     return (
         <motion.div
@@ -76,7 +79,7 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                 <div className="flex justify-between items-start mb-6">
                     <div>
                         <h3 className={`${isZoomed ? 'text-5xl' : 'text-2xl'} font-bold text-foreground transition-all duration-500`}>{moisture}%</h3>
-                        <p className={`${isZoomed ? 'text-lg' : 'text-sm'} text-muted-foreground font-medium`}>Moisture Content</p>
+                        <p className={`${isZoomed ? 'text-lg' : 'text-sm'} text-muted-foreground font-medium`}>{t("soil.moistureContent")}</p>
                     </div>
                     <div className={`${config.iconColor} ${config.animation}`}>
                         <Droplet size={isZoomed ? 80 : 48} strokeWidth={1.5} className="transition-all" />
@@ -87,14 +90,14 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                     <div className="flex items-center gap-2">
                         <FlaskConical className="w-5 h-5 text-accent" />
                         <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">PH Level</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("soil.ph")}</p>
                             <p className="text-sm font-semibold text-foreground">{phLevel}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Sprout className="w-5 h-5 text-accent" />
                         <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nutrients</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t("soil.nutrients")}</p>
                             <p className="text-[11px] font-semibold text-foreground uppercase">N-P-K: {nitrogen}-{phosphorus}-{potassium}</p>
                         </div>
                     </div>
@@ -112,7 +115,7 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                         <div>
                             <div className="flex items-center gap-2 mb-4">
                                 <TrendingUp className="w-5 h-5 text-accent" />
-                                <h4 className="font-bold text-foreground">24h Moisture Trend</h4>
+                                <h4 className="font-bold text-foreground">{t("soil.trend")}</h4>
                             </div>
                             <div className="bg-secondary/10 rounded-xl p-6 border border-border/40 h-32 flex items-end gap-2 justify-between">
                                 {[65, 62, 70, 75, 72, 68, 65, 68].map((val, idx) => (
@@ -140,7 +143,7 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <ClipboardCheck className="w-5 h-5 text-accent" />
-                                <h4 className="font-bold text-foreground">AI Sustainability Actions</h4>
+                                <h4 className="font-bold text-foreground">{t("soil.actions")}</h4>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -149,7 +152,7 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                                         <AlertCircle size={20} />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-sm text-foreground">Fertilizer Timing</p>
+                                        <p className="font-bold text-sm text-foreground">{t("soil.fertilizer")}</p>
                                         <p className="text-xs text-muted-foreground mt-1">Excellent time to apply Nitrogen. Soil moisture is optimal for absorption.</p>
                                     </div>
                                 </div>
@@ -158,7 +161,7 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                                         <Info size={20} />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-sm text-foreground">PH Balance</p>
+                                        <p className="font-bold text-sm text-foreground">{t("soil.phBalance")}</p>
                                         <p className="text-xs text-muted-foreground mt-1">PH is slightly alkaline. Consider adding organic mulch to Section C.</p>
                                     </div>
                                 </div>
@@ -167,11 +170,11 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
 
                         <div className="bg-primary/5 rounded-xl p-6 border border-primary/20 flex items-center justify-between">
                             <div>
-                                <h4 className="font-bold text-foreground">Full Soil Lab Report</h4>
-                                <p className="text-sm text-muted-foreground">Digital twin analysis synchronization active.</p>
+                                <h4 className="font-bold text-foreground">{t("soil.report")}</h4>
+                                <p className="text-sm text-muted-foreground">{t("soil.syncActive")}</p>
                             </div>
                             <Button className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold">
-                                View Report
+                                {t("soil.viewReport")}
                             </Button>
                         </div>
                     </motion.div>
@@ -181,10 +184,10 @@ const SoilHealthCard: React.FC<SoilHealthCardProps> = ({
                     <div className="pt-4 border-t border-border/50 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${config.iconColor} animate-pulse`} />
-                            <span className="text-sm font-medium text-foreground/80">{config.label}</span>
+                            <span className="text-sm font-medium text-foreground/80">{localizedLabel}</span>
                         </div>
                         <Button variant="ghost" size="sm" className="h-8 text-accent hover:text-accent hover:bg-accent/10 p-0">
-                            Soil Report <ArrowRight className="w-4 h-4 ml-1" />
+                            {t("soil.title")} <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                     </div>
                 )}

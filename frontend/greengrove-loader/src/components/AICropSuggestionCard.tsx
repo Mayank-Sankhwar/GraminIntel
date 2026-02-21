@@ -13,6 +13,7 @@ import {
     Sprout
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useLanguage } from "../context/LanguageContext";
 
 interface AICropSuggestionCardProps {
     cropName: string;
@@ -37,6 +38,7 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
     isZoomed,
     transition
 }) => {
+    const { t } = useLanguage();
     return (
         <motion.div
             layoutId={layoutId}
@@ -52,7 +54,7 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
                 <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
                         <Sparkles size={14} className="text-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">AI Suggestion</span>
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{t("ai.suggestion")}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <MapPin size={12} className="text-muted-foreground" />
@@ -68,7 +70,7 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
                         <h3 className={`${isZoomed ? 'text-5xl' : 'text-2xl'} font-black text-foreground tracking-tight transition-all`}>{cropName}</h3>
                         <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
                             <TrendingUp size={14} />
-                            <span>{confidence}% Match</span>
+                            <span>{confidence}% {t("ai.match")}</span>
                         </div>
                     </div>
                 </div>
@@ -81,14 +83,14 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
                     <div className="bg-white/5 p-3 rounded-2xl border border-border/50">
                         <div className="flex items-center gap-2 mb-1">
                             <Zap size={12} className="text-accent" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Yield Est.</span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("ai.yieldEst")}</span>
                         </div>
                         <p className="text-sm font-black text-foreground">{expectedYield}</p>
                     </div>
                     <div className="bg-white/5 p-3 rounded-2xl border border-border/50">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Soil Score</span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("ai.soilScore")}</span>
                         </div>
                         <p className="text-sm font-black text-foreground">{suitabilityScore}/10</p>
                     </div>
@@ -97,14 +99,14 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
                             <div className="bg-white/5 p-3 rounded-2xl border border-border/50">
                                 <div className="flex items-center gap-2 mb-1">
                                     <Droplets size={12} className="text-blue-500" />
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Water Req.</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("ai.waterReq")}</span>
                                 </div>
-                                <p className="text-sm font-black text-foreground">Moderate</p>
+                                <p className="text-sm font-black text-foreground">{t("soil.optimal")}</p>
                             </div>
                             <div className="bg-white/5 p-3 rounded-2xl border border-border/50">
                                 <div className="flex items-center gap-2 mb-1">
                                     <Sprout size={12} className="text-emerald-500" />
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Growth Cycle</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{t("ai.growthCycle")}</span>
                                 </div>
                                 <p className="text-sm font-black text-foreground">110 Days</p>
                             </div>
@@ -121,12 +123,12 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
                     >
                         <div className="flex items-center gap-2 mb-4">
                             <Calendar className="w-5 h-5 text-accent" />
-                            <h4 className="font-bold text-foreground">Planting Calendar</h4>
+                            <h4 className="font-bold text-foreground">{t("ai.calendar")}</h4>
                         </div>
                         <div className="bg-secondary/10 rounded-2xl p-6 border border-border/40">
                             <div className="flex justify-between items-center mb-4">
-                                <span className="text-xs font-bold text-muted-foreground uppercase">Optimal Window</span>
-                                <span className="text-xs font-black text-emerald-500 uppercase bg-emerald-500/10 px-2 py-0.5 rounded">Highly Recommended</span>
+                                <span className="text-xs font-bold text-muted-foreground uppercase">{t("ai.window")}</span>
+                                <span className="text-xs font-black text-emerald-500 uppercase bg-emerald-500/10 px-2 py-0.5 rounded">{t("ai.recommended")}</span>
                             </div>
                             <div className="relative h-4 bg-secondary/30 rounded-full overflow-hidden">
                                 <div className="absolute left-[20%] right-[30%] h-full bg-emerald-500" />
@@ -145,7 +147,7 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
                                 <Target size={24} />
                             </div>
                             <div>
-                                <h4 className="font-bold text-foreground mb-1">Yield Optimization Strategy</h4>
+                                <h4 className="font-bold text-foreground mb-1">{t("ai.strategy")}</h4>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
                                     To maximize yield for this variety, we suggest a seed rate of 4.5kg/ha and early sowing to avoid aphid infestation during the flowering stage.
                                 </p>
@@ -156,7 +158,7 @@ const AICropSuggestionCard: React.FC<AICropSuggestionCardProps> = ({
 
                 {!isZoomed && (
                     <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl border-none h-12 shadow-lg shadow-emerald-600/20 group/btn">
-                        Implementation Plan <ChevronRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        {t("ai.plan")} <ChevronRight size={18} className="ml-1 group-hover:translate-x-1 transition-transform" />
                     </Button>
                 )}
             </div>
